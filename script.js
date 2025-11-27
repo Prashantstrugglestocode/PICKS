@@ -1,0 +1,1364 @@
+/**
+ * Cache Simulator Logic
+ * Enhanced for TUM Students with Auth, Educational Features, Step-by-Step Mode, and Visual Grid.
+ */
+
+class CacheSimulator {
+    constructor(cacheSize, blockSize, associativity, replacementPolicy, powerParams, voltage) {
+        this.cacheSize = cacheSize;
+        this.blockSize = blockSize;
+        this.associativity = associativity === 0 ? cacheSize / blockSize : associativity;
+        this.replacementPolicy = replacementPolicy;
+        this.powerParams = powerParams;
+        this.voltage = voltage;
+
+        this.numBlocks = Math.floor(cacheSize / blockSize);
+        this.numSets = Math.floor(this.numBlocks / this.associativity);
+        this.offsetBits = Math.log2(blockSize);
+        this.indexBits = Math.log2(this.numSets);
+        this.tagBits = 32 - this.indexBits - this.offsetBits;
+
+        this.reset();
+    }
+
+    reset() {
+        this.data = new Array(this.numSets).fill(0).map(() =>
+            new Array(this.associativity).fill(null)
+        ); // Store data values
+        this.symbolTable = {}; // Map variable names to addresses
+        this.memory = {}; // Main Memory (RAM) state
+        this.nextAllocAddress = 0x1000; // Start allocating vars at 0x1000
+
+        // L2 Cache (Simple Model for now)
+        this.l2 = {
+            size: 4096, // 4KB
+            blockSize: this.blockSize,
+            associativity: 4,
+            sets: [],
+            hits: 0,
+            misses: 0
+        };
+        this.initL2();
+
+        this.cache = Array(this.numSets).fill().map(() =>
+            Array(this.associativity).fill().map(() => ({
+                valid: false,
+                tag: 0,
+                accessTime: 0,
+                lruCounter: 0,
+                dirty: false, // Added dirty bit
+                data: null // Added data field
+            }))
+        );
+
+        this.stats = {
+            accesses: 0,
+            hits: 0,
+            misses: 0,
+            compulsoryMisses: 0,
+            capacityMisses: 0,
+            conflictMisses: 0
+        };
+
+        this.powerStats = {
+            staticEnergy: 0,
+            dynamicEnergy: 0,
+            missPenaltyEnergy: 0,
+            totalEnergy: 0
+        };
+
+        this.currentTime = 0;
+    }
+
+    initL2() {
+        const l2NumBlocks = Math.floor(this.l2.size / this.l2.blockSize);
+        const l2NumSets = Math.floor(l2NumBlocks / this.l2.associativity);
+        this.l2.sets = Array(l2NumSets).fill().map(() =>
+            Array(this.l2.associativity).fill().map(() => ({
+                valid: false,
+                tag: 0,
+                lruCounter: 0,
+                dirty: false,
+                data: null
+            }))
+        );
+    }
+
+    // Helper to parse address or allocate for variable
+    parseAddress(addressInput) {
+        if (addressInput.startsWith('0x')) {
+            return parseInt(addressInput, 16) & 0xFFFFFFFF;
+        } else {
+            // Assume it's a variable name
+            if (!this.symbolTable[addressInput]) {
+                this.symbolTable[addressInput] = this.nextAllocAddress;
+                this.nextAllocAddress += this.blockSize; // Allocate block-aligned address
+            }
+            return this.symbolTable[addressInput];
+        }
+    }
+
+    access(addressInput, type = 'Read', value = null) {
+        this.currentTime++;
+        const address = this.parseAddress(addressInput);
+
+        // Update RAM if it's a direct write (bypass cache? No, usually write allocate)
+        // But for initialization/string input, we might want to pre-populate RAM.
+        // If type is Write, we update cache.
+        // If we want to simulate "loading" data, we should have a separate method.
+        // But `access` handles CPU requests.
+
+        // If it's a Write, we update RAM only on eviction (Write-Back) or immediately (Write-Through).
+        // Let's assume Write-Back.
+        // However, for the "String Input" feature, the user expects to see it in RAM.
+        // Maybe we treat the input as "DMA" or "Loader" which writes to RAM directly?
+        // The `parseAddressSequence` calls `access`.
+
+        // Let's implicitly update RAM for visualization purposes if it's a Write, 
+        // effectively simulating Write-Through for visibility, or just "Magic Memory View".
+        if (type === 'Write') {
+            this.memory[address] = value;
+        }
+
+        const offsetMask = (1 << this.offsetBits) - 1;
+        const indexMask = (1 << this.indexBits) - 1;
+
+        const index = (address >> this.offsetBits) & indexMask;
+        const tag = address >> (this.offsetBits + this.indexBits);
+        const setIndex = index % this.numSets;
+
+        this.stats.accesses++;
+
+        // Check Hit
+        const set = this.cache[setIndex];
+        let hitIndex = -1;
+
+        for (let i = 0; i < set.length; i++) {
+            if (set[i].valid && set[i].tag === tag) {
+                hitIndex = i;
+                break;
+            }
+        }
+
+        let isHit = false;
+        let missType = null;
+        let wayIndex = -1;
+
+        if (hitIndex !== -1) {
+            // HIT
+            isHit = true;
+            this.stats.hits++;
+            set[hitIndex].lruCounter = this.currentTime;
+            wayIndex = hitIndex;
+
+            if (type === 'Write') {
+                set[hitIndex].dirty = true;
+                set[hitIndex].data = value;
+                // Write-through or Write-back? Assuming Write-back for L1.
+                // So we don't update RAM yet.
+            }
+        } else {
+            // MISS
+            isHit = false;
+            this.stats.misses++;
+
+            // L1 Miss, check L2
+            const l2OffsetBits = Math.log2(this.l2.blockSize);
+            const l2IndexBits = Math.log2(this.l2.sets.length);
+            const l2IndexMask = (1 << l2IndexBits) - 1;
+
+            const l2Index = (address >> l2OffsetBits) & l2IndexMask;
+            const l2Tag = address >> (l2OffsetBits + l2IndexBits);
+            const l2Set = this.l2.sets[l2Index];
+
+            let l2HitIndex = -1;
+            for (let i = 0; i < l2Set.length; i++) {
+                if (l2Set[i].valid && l2Set[i].tag === l2Tag) {
+                    l2HitIndex = i;
+                    break;
+                }
+            }
+
+            if (l2HitIndex !== -1) {
+                this.l2.hits++;
+                l2Set[l2HitIndex].lruCounter = this.currentTime;
+                // Data comes from L2 to L1
+                // console.log(`L1 Miss, L2 Hit for address ${address.toString(16)}`);
+            } else {
+                this.l2.misses++;
+                // Data comes from Main Memory
+                const ramData = this.memory[address] || null;
+                // console.log(`L1 Miss, L2 Miss for address ${address.toString(16)}`);
+
+                // Simulate L2 replacement if needed
+                let l2EmptyIndex = -1;
+                for (let i = 0; i < l2Set.length; i++) {
+                    if (!l2Set[i].valid) {
+                        l2EmptyIndex = i;
+                        break;
+                    }
+                }
+                if (l2EmptyIndex !== -1) {
+                    l2Set[l2EmptyIndex] = { valid: true, tag: l2Tag, lruCounter: this.currentTime, dirty: false, data: ramData };
+                } else {
+                    const l2ReplaceIndex = this.getReplacementIndex(l2Set); // Using L1's replacement policy for L2 for simplicity
+                    // Writeback L2 to RAM if dirty (not implemented fully yet, but we should update RAM)
+                    if (l2Set[l2ReplaceIndex].dirty) {
+                        // Calculate address from tag and index (reverse mapping needed or store address)
+                        // For now, simple model.
+                    }
+                    l2Set[l2ReplaceIndex] = { valid: true, tag: l2Tag, lruCounter: this.currentTime, dirty: false, data: ramData };
+                }
+            }
+
+            // Determine Miss Type for L1
+            let emptyIndex = -1;
+            for (let i = 0; i < set.length; i++) {
+                if (!set[i].valid) {
+                    emptyIndex = i;
+                    break;
+                }
+            }
+
+            if (emptyIndex !== -1) {
+                missType = 'Compulsory';
+                this.stats.compulsoryMisses++;
+                set[emptyIndex] = { valid: true, tag: tag, lruCounter: this.currentTime, dirty: (type === 'Write'), data: value };
+                wayIndex = emptyIndex;
+            } else {
+                // Replacement needed
+                missType = this.numSets === 1 ? 'Capacity' : 'Conflict';
+                if (missType === 'Capacity') this.stats.capacityMisses++;
+                else this.stats.conflictMisses++;
+
+                const replaceIndex = this.getReplacementIndex(set);
+                // If block is dirty, simulate write-back
+                if (set[replaceIndex].dirty) {
+                    // console.log(`Write-back: Set ${setIndex}, Way ${replaceIndex}, Tag ${set[replaceIndex].tag}`);
+                    // This is where a real simulator would write the block back to main memory
+                }
+                set[replaceIndex] = { valid: true, tag: tag, lruCounter: this.currentTime, dirty: (type === 'Write'), data: value };
+                wayIndex = replaceIndex;
+            }
+        }
+
+        this.calculatePower(isHit);
+
+        this.lastResult = {
+            isHit,
+            missType,
+            setIndex,
+            wayIndex,
+            tag,
+            energy: this.lastAccessEnergy,
+            accessType: type,
+            data: (type === 'Read' && isHit) ? set[wayIndex].data : value // Return data on read hit
+        };
+        return this.lastResult;
+    }
+
+    getReplacementIndex(set) {
+        if (this.replacementPolicy === 'RANDOM') return Math.floor(Math.random() * set.length);
+        if (this.replacementPolicy === 'FIFO') {
+            // FIFO needs to track insertion order, for simplicity, we'll use LRU as a proxy for now
+            // A proper FIFO would need an additional queue per set or a timestamp for insertion.
+            // For now, we'll just pick the "oldest" based on lruCounter if FIFO is selected.
+            let fifoIndex = 0;
+            for (let i = 1; i < set.length; i++) {
+                if (set[i].lruCounter < set[fifoIndex].lruCounter) fifoIndex = i;
+            }
+            return fifoIndex;
+        }
+        // LRU
+        let lruIndex = 0;
+        for (let i = 1; i < set.length; i++) {
+            if (set[i].lruCounter < set[lruIndex].lruCounter) lruIndex = i;
+        }
+        return lruIndex;
+    }
+
+    calculatePower(isHit) {
+        const voltageFactor = this.voltage * this.voltage;
+        const staticPower = (this.powerParams.staticPower * (this.cacheSize / 1024)) * voltageFactor;
+
+        let dynamicEnergy = 0;
+        if (isHit) dynamicEnergy = 5 * voltageFactor;
+        else dynamicEnergy = this.powerParams.missPenaltyPower * voltageFactor;
+
+        this.lastAccessEnergy = dynamicEnergy + staticPower;
+
+        this.powerStats.staticEnergy += staticPower;
+        this.powerStats.dynamicEnergy += dynamicEnergy;
+        this.powerStats.totalEnergy += this.lastAccessEnergy;
+    }
+}
+
+/**
+ * UI Controller
+ */
+const app = {
+    charts: {},
+    sim: null,
+    stepIndex: 0,
+    addresses: [],
+    steps: [], // Store parsed steps with type and value
+
+    // View Manager (Router)
+    router: {
+        navigate(viewId) {
+            // Hide all views
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            // Show target view
+            const target = document.getElementById(`view-${viewId}`);
+            if (target) target.classList.add('active');
+
+            // Update UI state based on view
+            if (viewId === 'l1') {
+                // Ensure grid is initialized if needed
+                if (app.sim) app.updateVisualGrid(app.sim.lastResult || { setIndex: -1, wayIndex: -1 });
+            } else if (viewId === 'l2') {
+                if (app.sim) app.updateVisualGridL2(app.sim.lastResult || { setIndex: -1, wayIndex: -1 });
+            } else if (viewId === 'ram') {
+                if (app.sim) app.updateVisualGridRAM();
+            } else if (viewId === 'cpu') {
+                if (app.sim) app.updateVisualGridCPU();
+            }
+        }
+    },
+
+    isPlaying: false,
+    playInterval: null,
+
+    togglePlay() {
+        if (this.isPlaying) {
+            this.stopPlay();
+        } else {
+            this.startPlay();
+        }
+    },
+
+    startPlay() {
+        if (this.stepIndex >= this.steps.length) return;
+        this.isPlaying = true;
+        const btn = document.getElementById('playSimulation');
+        if (btn) btn.innerHTML = '<span class="icon">⏸</span> Pause';
+
+        this.playInterval = setInterval(() => {
+            if (this.stepIndex >= this.steps.length) {
+                this.stopPlay();
+                return;
+            }
+            this.step();
+        }, 1000); // 1 step per second
+    },
+
+    stopPlay() {
+        this.isPlaying = false;
+        clearInterval(this.playInterval);
+        const btn = document.getElementById('playSimulation');
+        if (btn) btn.innerHTML = '<span class="icon">▶️</span> Play';
+    },
+
+    init() {
+        this.checkAuth();
+        this.initTheme(); // New method for theme initialization
+        this.initEventListeners(); // Renamed from bindEvents
+        this.initCharts();
+        this.initChatbot(); // Renamed from setupChatbot
+
+        // Initialize Simulator with defaults
+        this.initSimulator(); // New method for simulator initialization
+
+        // Default to System View
+        this.router.navigate('system');
+    },
+
+    // New method for theme initialization
+    initTheme() {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.setAttribute('data-theme', 'dark');
+            this.updateThemeIcon(true);
+        }
+    },
+
+    checkAuth() {
+        const user = localStorage.getItem('tum_user');
+        const overlay = document.getElementById('loginOverlay');
+        if (!user) {
+            overlay.classList.remove('hidden');
+        } else {
+            overlay.classList.add('hidden');
+        }
+    },
+
+    // Removed dead code bindEvents()
+
+    loadTrace(type) {
+        let trace = "";
+        switch (type) {
+            case 'sequential':
+                // Strided access to hit different sets (assuming 32B blocks)
+                trace = "0x000\n0x020\n0x040\n0x060\n0x080\n0x0A0\n0x0C0\n0x0E0";
+                break;
+            case 'looping':
+                // Temporal locality: Access same set of blocks repeatedly
+                trace = "0x100\n0x104\n0x108\n0x100\n0x104\n0x108\n0x100\n0x104";
+                break;
+            case 'random':
+                // Thrashing: Random accesses across a large range
+                trace = "0x000\n0x800\n0x204\n0x900\n0x108\n0x300\n0x504\n0x100\n0xA00\n0xB00";
+                break;
+            case 'matrix':
+                // Matrix multiplication pattern (Row-major)
+                trace = "0x000\n0x004\n0x008\n0x100\n0x104\n0x108\n0x200\n0x204\n0x208";
+                break;
+            case 'conflict':
+                // Conflict Miss Demo: Mapping to same set (Index 0)
+                // Assuming 32B blocks, 1024B cache -> 32 sets.
+                // 0x000 -> Set 0
+                // 0x400 -> Set 0 (1024 offset)
+                // 0x800 -> Set 0
+                trace = "0x000\n0x400\n0x800\n0xC00\n0x000\n0x400\n0x800\n0xC00";
+                break;
+            case 'variables':
+                // Variable Demo
+                trace = "x = 10\ny = 20\nz = Hello\nx\ny\nz\nx = 99";
+                break;
+            default:
+                return;
+        }
+        document.getElementById('addressSequence').value = trace;
+    },
+
+    handleLogin() {
+        const emailInput = document.getElementById('studentEmail');
+        const errorMsg = document.getElementById('loginError');
+        const email = emailInput.value.trim().toLowerCase();
+        const tumRegex = /^[a-zA-Z0-9._%+-]+@(tum\.de|mytum\.de)$/;
+
+        if (tumRegex.test(email)) {
+            localStorage.setItem('tum_user', email);
+            document.getElementById('loginOverlay').classList.add('hidden');
+            errorMsg.classList.add('hidden');
+            this.addChatMessage(`Welcome, ${email.split('@')[0]}! I am TUMmy, your personal cache assistant.`, 'bot');
+        } else {
+            errorMsg.classList.remove('hidden');
+            emailInput.style.borderColor = 'var(--danger-color)';
+        }
+    },
+
+    handleLogout() {
+        localStorage.removeItem('tum_user');
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        this.addChatMessage("You have been logged out. Please log in to continue.", 'bot');
+    },
+
+    toggleTheoryModal() {
+        const overlay = document.getElementById('theoryOverlay');
+        overlay.classList.toggle('hidden');
+    },
+
+    toggleTheme() {
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            document.body.removeAttribute('data-theme');
+            this.updateThemeIcon(false);
+        } else {
+            document.body.setAttribute('data-theme', 'dark');
+            this.updateThemeIcon(true);
+        }
+        this.updateChartsTheme();
+    },
+
+    updateThemeIcon(isDark) {
+        const sun = document.querySelector('.sun-icon');
+        const moon = document.querySelector('.moon-icon');
+        if (isDark) {
+            sun.style.display = 'none';
+            moon.style.display = 'block';
+        } else {
+            sun.style.display = 'block';
+            moon.style.display = 'none';
+        }
+    },
+
+    initCharts() {
+        const ctxHit = document.getElementById('hitRateChart').getContext('2d');
+        this.charts.hitRate = new Chart(ctxHit, {
+            type: 'doughnut',
+            data: {
+                labels: ['Hits', 'Misses'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: ['#00b894', '#d63031'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                cutout: '70%',
+                plugins: { legend: { display: false } },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+
+        const ctxMain = document.getElementById('mainChart').getContext('2d');
+        this.charts.main = new Chart(ctxMain, {
+            type: 'bar',
+            data: {
+                labels: ['Static', 'Dynamic'],
+                datasets: [{
+                    label: 'Energy (pJ)',
+                    data: [0, 0],
+                    backgroundColor: ['#0984e3', '#fdcb6e'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    },
+
+    updateChartsTheme() { },
+
+    initSimulator() {
+        const config = this.getConfig();
+        this.sim = new CacheSimulator(
+            config.cacheSize,
+            config.blockSize,
+            config.associativity,
+            config.replacementPolicy,
+            config.powerParams,
+            config.voltage
+        );
+        this.parseAddressSequence(); // Parse addresses and operations
+        this.stepIndex = 0;
+        document.querySelector('#resultsTable tbody').innerHTML = '';
+
+        // Init Grid
+        this.initVisualGrid(this.sim);
+    },
+
+    parseAddressSequence() {
+        const rawAddresses = document.getElementById('addressSequence').value.trim().split('\n').filter(a => a.trim());
+        this.steps = rawAddresses.map(line => {
+            const parts = line.split('=').map(s => s.trim());
+            if (parts.length === 2) {
+                // Write operation: variable = value
+                return { label: parts[0], address: parts[0], type: 'Write', value: parts[1] };
+            } else {
+                // Read operation: address or variable
+                return { label: parts[0], address: parts[0], type: 'Read', value: null };
+            }
+        });
+    },
+
+    initVisualGrid(sim) {
+        const container = document.getElementById('visualGrid');
+        container.innerHTML = '';
+        container.style.gridTemplateColumns = `repeat(${sim.associativity}, 1fr)`;
+
+        for (let i = 0; i < sim.numSets; i++) {
+            const row = document.createElement('div');
+            row.className = 'set-row';
+            row.title = `Set ${i}`;
+
+            for (let j = 0; j < sim.associativity; j++) {
+                const block = document.createElement('div');
+                block.className = 'cache-block';
+                block.id = `block-${i}-${j}`;
+                block.textContent = 'Empty'; // Initial state
+                block.classList.add('empty');
+                row.appendChild(block);
+            }
+            container.appendChild(row);
+        }
+
+        // Init L2 Grid
+        this.initVisualGridL2(sim);
+
+        // Init RAM Grid
+        this.initVisualGridRAM(sim);
+
+        // Init CPU Grid
+        this.initVisualGridCPU();
+    },
+
+    initVisualGridL2(sim) {
+        const container = document.getElementById('visualGridL2');
+        if (!container) return;
+        container.innerHTML = '';
+        // L2 is larger, so we might need scrolling or smaller blocks.
+        // For now, same style but more sets.
+        const l2NumBlocks = Math.floor(sim.l2.size / sim.l2.blockSize);
+        const l2NumSets = Math.floor(l2NumBlocks / sim.l2.associativity);
+
+        container.style.gridTemplateColumns = `repeat(${sim.l2.associativity}, 1fr)`;
+
+        for (let i = 0; i < l2NumSets; i++) {
+            const row = document.createElement('div');
+            row.className = 'set-row';
+            row.title = `Set ${i}`;
+
+            for (let j = 0; j < sim.l2.associativity; j++) {
+                const block = document.createElement('div');
+                block.className = 'cache-block';
+                block.id = `l2-block-${i}-${j}`;
+                block.textContent = 'Empty';
+                block.classList.add('empty');
+                row.appendChild(block);
+            }
+            container.appendChild(row);
+        }
+    },
+
+    initVisualGridRAM(sim) {
+        const container = document.getElementById('ramGrid');
+        if (!container) return;
+        container.innerHTML = '';
+
+        // We can't show 4GB. We'll show allocated blocks and a range around them.
+        // Or just show the `symbolTable` and `nextAllocAddress` range.
+        // Let's look at `sim.memory` (we need to add this to sim).
+
+        // For now, let's just show a placeholder or the variables.
+        this.updateVisualGridRAM();
+    },
+
+    initVisualGridCPU() {
+        const container = document.getElementById('cpuRegisters');
+        if (!container) return;
+        container.innerHTML = '';
+
+        // x0 is always 0
+        for (let i = 0; i < 32; i++) {
+            const reg = document.createElement('div');
+            reg.className = 'register';
+            reg.id = `reg-x${i}`;
+            reg.innerHTML = `
+                <div class="reg-name">x${i}</div>
+                <div class="reg-val">0x00000000</div>
+            `;
+            container.appendChild(reg);
+        }
+    },
+
+    updateVisualGridCPU() {
+        const pcEl = document.getElementById('cpu-pc');
+        const sysPcEl = document.getElementById('sys-pc');
+        const irEl = document.getElementById('cpu-ir');
+
+        // Mock PC update based on step
+        const currentPC = 0x1000 + (this.stepIndex * 4);
+        const pcHex = '0x' + currentPC.toString(16).toUpperCase();
+
+        if (pcEl) pcEl.textContent = pcHex;
+        if (sysPcEl) sysPcEl.textContent = pcHex;
+
+        // Mock Instruction
+        if (irEl && this.stepIndex < this.steps.length) {
+            const step = this.steps[this.stepIndex];
+            irEl.textContent = `${step.type.toUpperCase()} ${step.label}`;
+        } else if (irEl) {
+            irEl.textContent = "HALT";
+        }
+
+        // Randomly update a register to simulate activity
+        if (this.stepIndex > 0) {
+            const randReg = Math.floor(Math.random() * 31) + 1; // x1-x31
+            const regEl = document.querySelector(`#reg-x${randReg} .reg-val`);
+            if (regEl) {
+                const val = Math.floor(Math.random() * 0xFFFFFFFF);
+                regEl.textContent = '0x' + val.toString(16).toUpperCase().padStart(8, '0');
+                // Flash effect
+                const regBox = document.getElementById(`reg-x${randReg}`);
+                regBox.style.borderColor = 'var(--accent-color)';
+                setTimeout(() => regBox.style.borderColor = 'transparent', 500);
+            }
+        }
+    },
+
+    updateVisualGridRAM() {
+        const container = document.getElementById('ramGrid');
+        if (!container) return;
+
+        // Get all allocated addresses from symbol table and manual accesses
+        // We need a way to track "touched" memory in Simulator.
+        // Let's add `this.memory = {}` to CacheSimulator.
+
+        if (!this.sim || !this.sim.memory) {
+            container.innerHTML = '<div class="empty-state">Memory is empty. Run simulation to populate.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        const sortedAddrs = Object.keys(this.sim.memory).map(Number).sort((a, b) => a - b);
+
+        if (sortedAddrs.length === 0) {
+            container.innerHTML = '<div class="empty-state">Memory is empty. Run simulation to populate.</div>';
+            return;
+        }
+
+        sortedAddrs.forEach(addr => {
+            const val = this.sim.memory[addr];
+            const block = document.createElement('div');
+            block.className = 'ram-block';
+            block.innerHTML = `
+                <div class="addr">0x${addr.toString(16).toUpperCase()}</div>
+                <div class="val">${val !== null ? val : '0'}</div>
+            `;
+            container.appendChild(block);
+        });
+    },
+
+    updateVisualGrid(res) {
+        // Clear previous highlights
+        document.querySelectorAll('.cache-block').forEach(b => {
+            b.classList.remove('highlight-set', 'flash-hit', 'flash-miss');
+        });
+
+        // Highlight Set
+        const setRow = document.querySelector(`#visualGrid .set-row:nth-child(${res.setIndex + 1})`);
+        if (setRow) {
+            setRow.classList.add('highlight-set');
+            // Remove highlight after animation
+            setTimeout(() => setRow.classList.remove('highlight-set'), 800);
+        }
+
+        const block = document.getElementById(`block-${res.setIndex}-${res.wayIndex}`);
+        if (block) {
+            const set = this.sim.cache[res.setIndex];
+            const cacheBlock = set[res.wayIndex];
+
+            if (cacheBlock.valid) {
+                block.classList.remove('empty');
+                block.classList.add('valid');
+                block.textContent = `Tag:${cacheBlock.tag}`;
+                if (cacheBlock.data) {
+                    block.innerHTML += `<div style="font-size:0.7em; color:white;">${cacheBlock.data}</div>`;
+                }
+                if (cacheBlock.dirty) block.classList.add('dirty');
+                else block.classList.remove('dirty');
+            }
+
+            // Flash Animation
+            if (res.isHit) {
+                block.classList.add('flash-hit');
+            } else {
+                block.classList.add('flash-miss');
+            }
+            setTimeout(() => block.classList.remove('flash-hit', 'flash-miss'), 800);
+        }
+
+        // Update L2 Grid as well
+        this.updateVisualGridL2(res);
+
+        // Update RAM Grid if write
+        if (res.accessType === 'Write') {
+            this.updateVisualGridRAM();
+        }
+
+        // Update CPU Grid
+        this.updateVisualGridCPU();
+    },
+
+    updateVisualGridL2(res) {
+        // We need to find which L2 block was accessed.
+        // The `res` object currently only has L1 info.
+        // We need to update `access` to return L2 info or calculate it here.
+        // For now, let's recalculate based on address in `res` if we had it, 
+        // but `res` doesn't have address.
+        // Wait, `addLogEntry` gets `addr`.
+        // Let's rely on `this.sim.l2.sets` state which is updated.
+        // We can iterate and update ALL L2 blocks (expensive) or just the one modified.
+        // Since we don't have the L2 index in `res`, let's just refresh the whole L2 grid for now 
+        // (or better, modify `access` to return L2 info).
+
+        // Actually, let's just refresh the whole L2 grid for simplicity in this step, 
+        // as `access` return value change is risky without more testing.
+
+        const l2Sets = this.sim.l2.sets;
+        for (let i = 0; i < l2Sets.length; i++) {
+            for (let j = 0; j < l2Sets[i].length; j++) {
+                const block = document.getElementById(`l2-block-${i}-${j}`);
+                if (block) {
+                    const l2Block = l2Sets[i][j];
+                    if (l2Block.valid) {
+                        block.classList.remove('empty');
+                        block.classList.add('valid');
+                        block.textContent = `Tag:${l2Block.tag}`;
+                    } else {
+                        block.classList.add('empty');
+                        block.classList.remove('valid');
+                        block.textContent = 'Empty';
+                    }
+                }
+            }
+        }
+    },
+
+    runAll() {
+        try {
+            this.initSimulator();
+            if (this.steps.length === 0) {
+                alert("No address trace to run! Please check the input.");
+                return;
+            }
+
+            // Performance: Don't animate every step in Run All
+            const wasAnimating = true; // We could disable animation here if we had a flag
+
+            while (this.stepIndex < this.steps.length) {
+                this.processStep(true); // Pass true for batch mode
+            }
+
+            // Final update to ensure everything looks correct
+            this.updateVisualGrid(this.sim.lastResult);
+            this.updateMetrics(this.sim);
+
+        } catch (e) {
+            console.error("Simulation Error:", e);
+            alert("Simulation error: " + e.message);
+        }
+    },
+
+    step() {
+        if (!this.sim) {
+            this.initSimulator();
+        }
+        if (this.stepIndex < this.steps.length) {
+            this.processStep();
+            const table = document.querySelector('.table-responsive');
+            table.scrollTop = table.scrollHeight;
+        } else {
+            alert("Simulation complete!");
+        }
+    },
+
+    processStep(isBatch = false) {
+        if (this.stepIndex >= this.steps.length) return;
+
+        const stepData = this.steps[this.stepIndex];
+        const addr = stepData.address;
+        const type = stepData.type;
+        const value = stepData.value;
+
+        let res;
+        if (type === 'Write') {
+            res = this.sim.access(addr, 'Write', value);
+        } else {
+            res = this.sim.access(addr, 'Read');
+        }
+
+        if (!res) {
+            console.error("Simulation access failed for address:", addr);
+            return;
+        }
+
+        this.addLogEntry(this.stepIndex + 1, stepData.label || '0x' + addr.toString(16), res);
+
+        // In batch mode, we might skip some visual updates for speed, 
+        // but for now let's keep them to ensure "it works" visibly.
+        // Maybe skip animation in batch.
+        if (!isBatch) {
+            this.updateMetrics(this.sim);
+            this.updateVisualGrid(res);
+            this.animateDataFlow(res);
+        } else {
+            // Only update metrics occasionally or at end? 
+            // For small traces, updating every time is fine.
+            // Let's just skip animation.
+            this.updateMetrics(this.sim);
+            this.updateVisualGrid(res);
+        }
+
+        // Context aware bot (reduce frequency in batch)
+        if (!isBatch && res.missType === 'Conflict' && Math.random() > 0.7) {
+            window.askBot("What is a conflict miss?");
+        }
+
+        this.stepIndex++;
+    },
+
+    getConfig() {
+        return {
+            cacheSize: parseInt(document.getElementById('cacheSize').value),
+            blockSize: parseInt(document.getElementById('blockSize').value),
+            associativity: parseInt(document.getElementById('associativity').value),
+            replacementPolicy: document.getElementById('replacementPolicy').value,
+            powerParams: {
+                staticPower: parseFloat(document.getElementById('staticPower').value),
+                missPenaltyPower: 20
+            },
+            voltage: parseFloat(document.getElementById('voltage').value)
+        };
+    },
+
+    addLogEntry(step, addr, res) {
+        const row = document.createElement('tr');
+        const location = `Set ${res.setIndex}, Way ${res.wayIndex}`;
+        row.innerHTML = `
+            <td>${step}</td>
+            <td>${addr}</td>
+            <td><span class="${res.isHit ? 'success-text' : 'danger-text'}">${res.isHit ? 'Hit' : 'Miss (' + res.missType + ')'}</span></td>
+            <td>${location}</td>
+            <td>${res.tag}</td>
+            <td>${res.energy.toFixed(2)}</td>
+        `;
+        document.querySelector('#resultsTable tbody').appendChild(row);
+    },
+
+    updateMetrics(sim) {
+        const hitRate = sim.stats.accesses > 0 ? (sim.stats.hits / sim.stats.accesses * 100) : 0;
+
+        document.getElementById('hitRateValue').textContent = hitRate.toFixed(1) + '%';
+        document.getElementById('energyValue').textContent = sim.powerStats.totalEnergy.toFixed(0) + ' pJ';
+        document.getElementById('accessesValue').textContent = sim.stats.accesses;
+        document.getElementById('hitsValue').textContent = sim.stats.hits + ' Hits';
+        document.getElementById('missesValue').textContent = sim.stats.misses + ' Misses';
+
+        // AMAT Calculation
+        // Assumptions: Hit Time = 1 cycle, Miss Penalty = 100 cycles
+        const hitTime = 1;
+        const missPenalty = 100;
+        const missRate = sim.stats.accesses > 0 ? (sim.stats.misses / sim.stats.accesses) : 0;
+        const amat = hitTime + (missRate * missPenalty);
+        document.getElementById('amatValue').textContent = amat.toFixed(2) + ' cycles';
+
+        this.charts.hitRate.data.datasets[0].data = [sim.stats.hits, sim.stats.misses];
+        this.charts.hitRate.update();
+
+        this.currentSimData = sim;
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        if (activeTab !== 'grid') {
+            this.updateMainChart(activeTab);
+        }
+    },
+
+    updateMainChart(type) {
+        if (!this.currentSimData) return;
+        const sim = this.currentSimData;
+
+        if (type === 'power') {
+            this.charts.main.data.labels = ['Static', 'Dynamic'];
+            this.charts.main.data.datasets[0].label = 'Energy (pJ)';
+            this.charts.main.data.datasets[0].data = [sim.powerStats.staticEnergy, sim.powerStats.dynamicEnergy];
+            this.charts.main.data.datasets[0].backgroundColor = ['#0984e3', '#fdcb6e'];
+        } else {
+            this.charts.main.data.labels = ['Compulsory', 'Capacity', 'Conflict'];
+            this.charts.main.data.datasets[0].label = 'Miss Count';
+            this.charts.main.data.datasets[0].data = [sim.stats.compulsoryMisses, sim.stats.capacityMisses, sim.stats.conflictMisses];
+            this.charts.main.data.datasets[0].backgroundColor = ['#a29bfe', '#e17055', '#d63031'];
+        }
+        this.charts.main.update();
+    },
+
+    reset() {
+        this.sim = null;
+        this.stepIndex = 0;
+        document.querySelector('#resultsTable tbody').innerHTML = '';
+        document.getElementById('hitRateValue').textContent = '0%';
+        document.getElementById('energyValue').textContent = '0 pJ';
+        document.getElementById('accessesValue').textContent = '0';
+        document.getElementById('hitsValue').textContent = '0 Hits';
+        document.getElementById('missesValue').textContent = '0 Misses';
+        document.getElementById('amatValue').textContent = '0 cycles';
+
+        // Clear Grid
+        const container = document.getElementById('visualGrid');
+        container.innerHTML = '<div class="empty-state">Run simulation to see cache state</div>';
+
+        this.charts.hitRate.data.datasets[0].data = [0, 0];
+        this.charts.hitRate.update();
+        this.charts.main.data.datasets[0].data = [0, 0];
+        this.charts.main.update();
+    },
+
+    showToast(msg) {
+        // Simple toast implementation
+        let toast = document.getElementById('toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast';
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--accent-color);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 1000;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+            `;
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.opacity = '1';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+        }, 3000);
+    },
+
+    setupTooltips() {
+        const tooltips = {
+            config: {
+                title: 'Cache Configuration',
+                formula: 'Size = Sets × Ways × BlockSize',
+                desc: 'Configure the physical parameters of the cache memory.',
+                factors: ['Larger cache = Higher hit rate but more power']
+            },
+            hitRate: {
+                title: 'Hit Rate',
+                formula: 'Hit Rate = (Hits / Total Accesses) × 100%',
+                desc: 'The percentage of memory accesses found in the cache.',
+                factors: ['Associativity', 'Block Size', 'Locality']
+            },
+            energy: {
+                title: 'Total Energy',
+                formula: 'E_total = E_static + E_dynamic',
+                desc: 'Total energy consumed during the simulation.',
+                factors: ['Voltage', 'Access Count', 'Tech Node']
+            }
+        };
+
+        const overlay = document.getElementById('tooltipOverlay');
+        const title = document.getElementById('tooltipTitle');
+        const formula = document.getElementById('tooltipFormula');
+        const desc = document.getElementById('tooltipDesc');
+        const factors = document.getElementById('tooltipFactors');
+
+        document.querySelectorAll('.tooltip-trigger').forEach(trigger => {
+            trigger.addEventListener('mouseenter', (e) => {
+                const key = e.target.dataset.tooltip;
+                const data = tooltips[key];
+                if (data) {
+                    title.textContent = data.title;
+                    formula.textContent = data.formula;
+                    desc.textContent = data.desc;
+                    factors.innerHTML = data.factors.map(f => `<div>• ${f}</div>`).join('');
+                    overlay.classList.remove('hidden');
+                }
+            });
+
+            trigger.addEventListener('mouseleave', () => {
+                overlay.classList.add('hidden');
+            });
+        });
+    },
+
+    initEventListeners() {
+        // Helper to safely add listener
+        const addListener = (id, event, handler) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, handler);
+            else console.warn(`Element with ID '${id}' not found.`);
+        };
+
+        // Theme Toggle
+        addListener('themeToggle', 'click', () => this.toggleTheme());
+
+        // Auth
+        addListener('loginBtn', 'click', () => this.handleLogin());
+        addListener('logoutBtn', 'click', () => this.handleLogout());
+
+        // Theory
+        addListener('theoryBtn', 'click', () => this.toggleTheoryModal());
+        const closeModal = document.querySelector('.close-modal');
+        if (closeModal) closeModal.addEventListener('click', () => this.toggleTheoryModal());
+
+        // Simulation Controls
+        addListener('runSimulation', 'click', () => this.runAll());
+        addListener('stepSimulation', 'click', () => this.step());
+        addListener('playSimulation', 'click', () => this.togglePlay());
+        addListener('resetSimulation', 'click', () => this.reset());
+
+        // Trace Examples
+        addListener('traceExample', 'change', (e) => this.loadTrace(e.target.value));
+
+        // Grid Zoom
+        const zoomInput = document.getElementById('gridZoom');
+        if (zoomInput) {
+            zoomInput.addEventListener('input', (e) => {
+                const scale = e.target.value;
+                const grid = document.getElementById('visualGrid');
+                if (grid) {
+                    grid.style.fontSize = `${0.8 * scale}rem`;
+                    grid.style.gap = `${12 * scale}px`;
+                    document.querySelectorAll('.cache-block').forEach(b => {
+                        b.style.height = `${40 * scale}px`;
+                        b.style.minWidth = `${40 * scale}px`;
+                    });
+                }
+            });
+        }
+
+        // Config Change -> Auto Reset
+        const configInputs = ['cacheSize', 'blockSize', 'associativity', 'replacementPolicy', 'staticPower', 'voltage'];
+        configInputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', (e) => {
+                    const display = document.getElementById(id + 'Display');
+                    if (display) display.textContent = e.target.value;
+                    if (this.resetTimeout) clearTimeout(this.resetTimeout);
+                    this.resetTimeout = setTimeout(() => {
+                        this.reset();
+                        this.showToast("Configuration changed. Simulation reset.");
+                    }, 300);
+                });
+            }
+        });
+
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                const tab = e.target.dataset.tab;
+
+                if (tab === 'grid') {
+                    const grid = document.getElementById('visualGrid');
+                    if (grid) grid.classList.remove('hidden');
+                    const chart = document.getElementById('chartContainer');
+                    if (chart) chart.classList.add('hidden');
+                    const move = document.getElementById('dataMovement');
+                    if (move) move.classList.add('hidden');
+                } else if (tab === 'movement') {
+                    const grid = document.getElementById('visualGrid');
+                    if (grid) grid.classList.add('hidden');
+                    const chart = document.getElementById('chartContainer');
+                    if (chart) chart.classList.add('hidden');
+                    const move = document.getElementById('dataMovement');
+                    if (move) move.classList.remove('hidden');
+                } else {
+                    const grid = document.getElementById('visualGrid');
+                    if (grid) grid.classList.add('hidden');
+                    const chart = document.getElementById('chartContainer');
+                    if (chart) chart.classList.remove('hidden');
+                    const move = document.getElementById('dataMovement');
+                    if (move) move.classList.add('hidden');
+                    this.updateMainChart(tab);
+                }
+            });
+        });
+    },
+
+    initChatbot() {
+        const widget = document.getElementById('chatbotWidget');
+        const trigger = document.getElementById('chatTrigger');
+        const closeBtn = document.getElementById('closeChat');
+        const sendBtn = document.getElementById('sendMessage');
+        const input = document.getElementById('chatInput');
+
+        // Settings
+        const settingsBtn = document.getElementById('chatSettingsBtn');
+        const settingsPanel = document.getElementById('chatSettingsPanel');
+        const saveKeyBtn = document.getElementById('saveKeyBtn');
+        const keyInput = document.getElementById('geminiKey');
+
+        // Load Key
+        const savedKey = localStorage.getItem('gemini_api_key');
+        if (savedKey) keyInput.value = savedKey;
+
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.toggle('hidden');
+        });
+
+        saveKeyBtn.addEventListener('click', () => {
+            const key = keyInput.value.trim();
+            if (key) {
+                localStorage.setItem('gemini_api_key', key);
+                this.addChatMessage("API Key saved! I am now powered by Gemini. 🚀", 'bot');
+                settingsPanel.classList.add('hidden');
+            }
+        });
+
+        trigger.addEventListener('click', () => {
+            widget.classList.remove('closed');
+            trigger.style.transform = 'scale(0)';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            widget.classList.add('closed');
+            trigger.style.transform = 'scale(1)';
+        });
+
+        const sendMessage = async () => {
+            const text = input.value.trim();
+            if (!text) return;
+
+            this.addChatMessage(text, 'user');
+            input.value = '';
+
+            // Show typing indicator
+            const typingId = this.addChatMessage("Thinking...", 'bot', true);
+
+            try {
+                const response = await this.getBotResponse(text);
+                // Remove typing indicator (by replacing or removing)
+                const typingMsg = document.getElementById(typingId);
+                if (typingMsg) typingMsg.remove();
+
+                this.addChatMessage(response, 'bot');
+            } catch (e) {
+                console.error(e);
+                const typingMsg = document.getElementById(typingId);
+                if (typingMsg) typingMsg.remove();
+                this.addChatMessage("Sorry, I encountered an error. " + e.message, 'bot');
+            }
+        };
+
+        sendBtn.addEventListener('click', sendMessage);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Quick Questions
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                input.value = chip.textContent;
+                sendMessage();
+            });
+        });
+
+        // Expose askBot globally
+        window.askBot = (question) => {
+            if (widget.classList.contains('closed')) {
+                widget.classList.remove('closed');
+                trigger.style.transform = 'scale(0)';
+            }
+            input.value = question;
+            sendMessage();
+        };
+    },
+
+    async getBotResponse(input) {
+        const apiKey = localStorage.getItem('gemini_api_key');
+
+        // If no API key, use fallback regex bot
+        if (!apiKey) {
+            return this.getLocalBotResponse(input);
+        }
+
+        // Call Gemini API
+        try {
+            const response = await this.callGeminiAPI(input, apiKey);
+            return response;
+        } catch (error) {
+            console.warn("Gemini API failed, falling back to local bot:", error);
+            return this.getLocalBotResponse(input) + "\n\n(Fallback: API Error)";
+        }
+    },
+
+    async callGeminiAPI(prompt, apiKey) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+        const systemContext = `
+            You are TUMmy, an expert AI tutor for the Technical University of Munich (TUM) students.
+            Your domain is STRICTLY Computer Architecture, specifically RISC-V and Cache Memories.
+            
+            Current Simulation State:
+            - Cache Size: ${this.sim ? this.sim.cacheSize : 'Unknown'} Bytes
+            - Block Size: ${this.sim ? this.sim.blockSize : 'Unknown'} Bytes
+            - Associativity: ${this.sim ? this.sim.associativity : 'Unknown'}
+            - Replacement Policy: ${this.sim ? this.sim.replacementPolicy : 'Unknown'}
+            
+            Rules:
+            1. Answer ONLY questions related to Computer Architecture, Caches, RISC-V, or the simulation.
+            2. If asked about general topics (weather, history, etc.), politely decline and steer back to caches.
+            3. Be concise and educational. Use emojis occasionally.
+            4. Explain concepts simply, as if to a student.
+        `;
+
+        const payload = {
+            contents: [{
+                parts: [{
+                    text: systemContext + "\n\nUser Question: " + prompt
+                }]
+            }]
+        };
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+    },
+
+    getLocalBotResponse(input) {
+        const lower = input.toLowerCase();
+        if (lower.includes('hit') || lower.includes('miss')) {
+            return "A **Hit** means data was found in the cache (fast!). A **Miss** means we had to go to main memory (slow). Types of misses: Compulsory (first access), Capacity (full), Conflict (set full).";
+        }
+        if (lower.includes('associativity')) {
+            return "**Associativity** determines how many specific places a block can go. Direct Mapped = 1 place. Fully Associative = Any place. N-way = N places.";
+        }
+        if (lower.includes('risc-v') || lower.includes('risc')) {
+            return "RISC-V is an open standard Instruction Set Architecture (ISA). This simulator mimics how a RISC-V processor would interact with memory.";
+        }
+        if (lower.includes('hello') || lower.includes('hi')) {
+            return "Hello! I am TUMmy 🤖. Ask me about Caches, RISC-V, or this simulation!";
+        }
+        return "I'm not sure about that. Try asking about 'Hit Rate', 'Associativity', or 'RISC-V'. (Add an API Key in settings for smarter answers!)";
+    },
+
+    addChatMessage(text, sender, isTyping = false) {
+        const body = document.getElementById('chatBody');
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        div.textContent = text;
+        if (isTyping) {
+            div.id = 'typing-' + Date.now();
+            div.style.fontStyle = 'italic';
+            div.style.opacity = '0.7';
+        }
+        body.appendChild(div);
+        body.scrollTop = body.scrollHeight;
+        return div.id;
+    },
+
+    animateDataFlow(res) {
+        const cpuCacheBus = document.querySelector('.cpu-cache .arrow');
+        const cacheRamBus = document.querySelector('.cache-ram .arrow');
+
+        // Reset animations
+        cpuCacheBus.classList.remove('anim-left', 'anim-right');
+        cacheRamBus.classList.remove('anim-left', 'anim-right');
+        void cpuCacheBus.offsetWidth; // Trigger reflow
+
+        if (res.isHit) {
+            // Hit: Cache -> CPU
+            cpuCacheBus.classList.add('anim-left');
+        } else {
+            // Miss: RAM -> Cache -> CPU
+            cacheRamBus.classList.add('anim-left');
+            setTimeout(() => {
+                cpuCacheBus.classList.add('anim-left');
+            }, 1000);
+        }
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    app.init();
+});

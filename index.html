@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache Simulator | Advanced Architecture Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Using Chart.js for beautiful visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="glass-panel">
+            <div class="header-content">
+                <div class="logo-area">
+                    <div class="logo-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
+                            <path d="M8 4V20M16 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-dasharray="4 4" />
+                        </svg>
+                    </div>
+                    <h1>Cache Simulator <span class="version">v2.0</span></h1>
+                </div>
+                <div class="header-controls">
+                    <button id="theoryBtn" class="secondary-btn small-btn">
+                        <span class="icon">📚</span> Theory
+                    </button>
+                    <button id="logoutBtn" class="secondary-btn small-btn" style="margin-left: 5px;">
+                        <span class="icon">🚪</span> Logout
+                    </button>
+                    <button id="themeToggle" class="icon-btn" aria-label="Toggle Theme">
+                        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" style="display:none;">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <p class="subtitle">Interactive RISC-V Cache Behavior & Power Analysis Tool</p>
+        </header>
+
+        <main class="app-container">
+            <!-- View: System Overview -->
+            <section id="view-system" class="view active">
+                <div class="system-diagram-container">
+                    <h2>System Architecture Overview</h2>
+                    <p class="subtitle">Click on a component to inspect details</p>
+
+                    <div class="system-diagram">
+                        <div class="sys-component cpu-unit" onclick="app.router.navigate('cpu')">
+                            <div class="icon">🧠</div>
+                            <h3>CPU Core</h3>
+                            <div class="stats-mini">
+                                <div>PC: <span id="sys-pc">0x1000</span></div>
+                            </div>
+                            <div class="hover-hint">Click to Inspect</div>
+                        </div>
+
+                        <div class="sys-bus bus-l1">
+                            <div class="bus-arrow"></div>
+                        </div>
+
+                        <div class="sys-component cache-unit l1-cache" onclick="app.router.navigate('l1')">
+                            <div class="icon">⚡</div>
+                            <h3>L1 Cache</h3>
+                            <div class="stats-mini">
+                                <div>Hit Rate: <span id="sys-l1-hit">0%</span></div>
+                            </div>
+                            <div class="hover-hint">Click to Inspect</div>
+                        </div>
+
+                        <div class="sys-bus bus-l2">
+                            <div class="bus-arrow"></div>
+                        </div>
+
+                        <div class="sys-component cache-unit l2-cache" onclick="app.router.navigate('l2')">
+                            <div class="icon">📦</div>
+                            <h3>L2 Cache</h3>
+                            <div class="stats-mini">
+                                <div>Hit Rate: <span id="sys-l2-hit">0%</span></div>
+                            </div>
+                            <div class="hover-hint">Click to Inspect</div>
+                        </div>
+
+                        <div class="sys-bus bus-ram">
+                            <div class="bus-arrow"></div>
+                        </div>
+
+                        <div class="sys-component ram-unit" onclick="app.router.navigate('ram')">
+                            <div class="icon">💾</div>
+                            <h3>Main Memory</h3>
+                            <div class="stats-mini">
+                                <div>Size: 4GB</div>
+                            </div>
+                            <div class="hover-hint">Click to Inspect</div>
+                        </div>
+                    </div>
+
+                    <div class="global-controls">
+                        <button class="btn-primary" onclick="app.router.navigate('l1')">Start Simulation (L1
+                            View)</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: CPU Detail -->
+            <section id="view-cpu" class="view">
+                <div class="view-header">
+                    <button class="btn-back" onclick="app.router.navigate('system')">← Back to System</button>
+                    <h2>CPU Core & Registers</h2>
+                </div>
+                <div class="cpu-container glass-panel">
+                    <div class="cpu-status">
+                        <div class="reg-box pc-box">
+                            <div class="label">Program Counter (PC)</div>
+                            <div class="value" id="cpu-pc">0x1000</div>
+                        </div>
+                        <div class="reg-box ir-box">
+                            <div class="label">Instruction</div>
+                            <div class="value" id="cpu-ir">NOP</div>
+                        </div>
+                    </div>
+                    <h3>General Purpose Registers (x0 - x31)</h3>
+                    <div class="registers-grid" id="cpuRegisters">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: RAM Detail -->
+            <section id="view-ram" class="view">
+                <div class="view-header">
+                    <button class="btn-back" onclick="app.router.navigate('system')">← Back to System</button>
+                    <h2>Main Memory (RAM)</h2>
+                </div>
+                <div class="ram-container glass-panel">
+                    <div class="ram-controls">
+                        <input type="text" id="ramSearch" placeholder="Search Address (e.g., 0x1000)">
+                        <button class="btn-primary" id="ramSearchBtn">Go</button>
+                    </div>
+                    <div class="ram-grid" id="ramGrid">
+                        <!-- Populated by JS -->
+                        <div class="empty-state">Memory is empty. Run simulation to populate.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- View: L1 Detail (Original Main Grid) -->
+            <section id="view-l1" class="view">
+                <div class="view-header">
+                    <button class="btn-back" onclick="app.router.navigate('system')">← Back to System</button>
+                    <h2>L1 Cache Detail</h2>
+                </div>
+                <div class="main-grid">
+                    <!-- Configuration Panel -->
+                    <section class="config-panel glass-panel">
+                        <div class="panel-header">
+                            <h2>Configuration</h2>
+                            <div class="tooltip-trigger" data-tooltip="config">
+                                <span class="question-mark">?</span>
+                            </div>
+                        </div>
+
+                        <div class="config-group">
+                            <h3>Cache Architecture</h3>
+                            <div class="input-group">
+                                <label for="cacheSize">Cache Size: <span id="cacheSizeDisplay">1024</span> Bytes</label>
+                                <input type="range" id="cacheSize" value="1024" min="64" max="8192" step="64">
+                            </div>
+                            <div class="input-group">
+                                <label for="blockSize">Block Size: <span id="blockSizeDisplay">32</span> Bytes</label>
+                                <input type="range" id="blockSize" value="32" min="4" max="128" step="4">
+                            </div>
+                            <div class="input-group">
+                                <label for="associativity">Associativity</label>
+                                <select id="associativity">
+                                    <option value="1">Direct Mapped (1-way)</option>
+                                    <option value="2">2-way Set Associative</option>
+                                    <option value="4">4-way Set Associative</option>
+                                    <option value="8">8-way Set Associative</option>
+                                    <option value="0">Fully Associative</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="replacementPolicy">Replacement Policy</label>
+                                <select id="replacementPolicy">
+                                    <option value="LRU">Least Recently Used (LRU)</option>
+                                    <option value="FIFO">First-In-First-Out (FIFO)</option>
+                                    <option value="RANDOM">Random</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="config-group">
+                            <h3>Power Parameters</h3>
+                            <div class="input-row">
+                                <div class="input-group">
+                                    <label>Static (mW/KB)</label>
+                                    <input type="number" id="staticPower" value="50" step="0.1">
+                                </div>
+                                <div class="input-group">
+                                    <label>Voltage (V)</label>
+                                    <input type="number" id="voltage" value="1.0" step="0.1">
+                                </div>
+                            </div>
+                            <!-- Hidden advanced options could go here -->
+                        </div>
+
+                        <div class="config-group">
+                            <h3>Workload</h3>
+                            <div class="input-group">
+                                <label for="traceExample">Load Example Trace</label>
+                                <select id="traceExample">
+                                    <option value="custom">Custom Sequence</option>
+                                    <option value="sequential">Sequential (Spatial Locality)</option>
+                                    <option value="looping">Looping (Temporal Locality)</option>
+                                    <option value="random">Random (Thrashing)</option>
+                                    <option value="matrix">Matrix Multiplication</option>
+                                    <option value="conflict">Set Conflict Demo</option>
+                                    <option value="variables">Variables & Data (Strings)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="addressSequence">Memory Addresses / Data Input</label>
+                                <div class="help-text">Enter addresses (0x100) or variables (var x = "Hello")</div>
+                                <textarea id="addressSequence" placeholder="0x100&#10;var s = 'Hello'&#10;s">0x100
+0x104
+var s = "Hello"
+s</textarea>
+                            </div>
+                            0x108
+                            0x10C
+                            0x110
+                            0x114
+                            0x100
+                            0x104
+                            0x118
+                            0x11C
+                            0x100
+                            0x120</textarea>
+                        </div>
+                        <div class="button-group">
+                            <button id="stepSimulation" class="btn-secondary" title="Execute Next Step">
+                                <span class="icon">➡️</span> Step
+                            </button>
+                            <button id="playSimulation" class="btn-secondary" title="Auto Play">
+                                <span class="icon">▶️</span> Play
+                            </button>
+                            <button id="runSimulation" class="btn-primary" title="Run All Remaining">
+                                <span class="icon">⏩</span> Run All
+                            </button>
+                            <button id="resetSimulation" class="secondary-btn">Reset</button>
+                        </div>
+                </div>
+            </section>
+
+            <!-- Results Area -->
+            <div class="results-area">
+                <!-- Key Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card glass-panel">
+                        <div class="metric-header">
+                            <span>Hit Rate</span>
+                            <div class="tooltip-trigger" data-tooltip="hitRate">?</div>
+                        </div>
+                        <div class="metric-value" id="hitRateValue">0%</div>
+                        <div class="metric-chart-mini">
+                            <canvas id="hitRateChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-header">
+                            <span>Total Energy</span>
+                            <div class="tooltip-trigger" data-tooltip="energy">?</div>
+                        </div>
+                        <div class="metric-value" id="energyValue">0 pJ</div>
+                        <div class="metric-sub">Avg Power: <span id="avgPowerValue">0</span> mW</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-header">
+                            <span>Performance (AMAT)</span>
+                            <div class="tooltip-trigger" data-tooltip="amat">?</div>
+                        </div>
+                        <div class="metric-value" id="amatValue">0 cycles</div>
+                        <div class="metric-sub">Lower is better</div>
+                    </div>
+                    <div class="metric-card glass-panel">
+                        <div class="metric-header">
+                            <span>Accesses</span>
+                        </div>
+                        <div class="metric-value" id="accessesValue">0</div>
+                        <div class="metric-sub"><span id="hitsValue" class="success-text">0 Hits</span> • <span
+                                id="missesValue" class="danger-text">0 Misses</span></div>
+                    </div>
+                </div>
+
+                <!-- Main Visualization -->
+                <div class="viz-container glass-panel">
+                    <div class="panel-header">
+                        <h2>Cache State Visualization</h2>
+                        <div class="tabs">
+                            <div class="zoom-control">
+                                <label for="gridZoom" title="Zoom Grid">🔍</label>
+                                <input type="range" id="gridZoom" min="0.5" max="1.5" step="0.1" value="1">
+                            </div>
+                            <button class="tab-btn active" data-tab="grid">Visual Grid</button>
+                            <button class="tab-btn" data-tab="power">Power Chart</button>
+                            <button class="tab-btn" data-tab="misses">Miss Types</button>
+                            <button class="tab-btn" data-tab="movement">Data Flow</button>
+                        </div>
+                    </div>
+                    <div class="viz-content">
+                        <!-- Visual Grid Container -->
+                        <div id="visualGrid" class="cache-grid-container">
+                            <!-- Populated by JS -->
+                            <div class="empty-state">Run simulation to see cache state</div>
+                        </div>
+
+                        <!-- Chart Container (Hidden by default if Grid is active) -->
+                        <div id="chartContainer" class="chart-wrapper hidden">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+
+                        <!-- Data Movement Viz -->
+                        <div id="dataMovement" class="data-movement hidden">
+                            <div class="component cpu">CPU</div>
+                            <div class="bus cpu-cache">
+                                <div class="arrow"></div>
+                            </div>
+                            <div class="component cache">Cache</div>
+                            <div class="bus cache-ram">
+                                <div class="arrow"></div>
+                            </div>
+                            <div class="component ram">RAM</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Logs -->
+                <div class="logs-container glass-panel">
+                    <div class="panel-header">
+                        <h2>Access Log</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="resultsTable">
+                            <thead>
+                                <tr>
+                                    <th>Step</th>
+                                    <th>Address</th>
+                                    <th>Result</th>
+                                    <th>Location</th>
+                                    <th>Tag</th>
+                                    <th>Energy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            </section> <!-- End of L1 View -->
+
+            <!-- View: L2 Detail (Placeholder for now) -->
+            <section id="view-l2" class="view">
+                <div class="view-header">
+                    <button class="btn-back" onclick="app.router.navigate('system')">← Back to System</button>
+                    <h2>L2 Cache Detail</h2>
+                </div>
+                <div class="glass-panel" style="padding: 40px; text-align: center;">
+                    <h3>L2 Cache Visualization</h3>
+                    <p>Coming soon in the next step...</p>
+                    <!-- Will reuse grid logic here later -->
+                    <div id="visualGridL2" class="cache-grid-container"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Chatbot Widget -->
+        <div class="chatbot-widget closed" id="chatbotWidget">
+            <div class="chatbot-header">
+                <div class="chatbot-title">
+                    <span>🤖</span> TUMmy AI
+                </div>
+                <div class="chatbot-controls">
+                    <button id="chatSettingsBtn" class="icon-btn small" title="API Settings">⚙️</button>
+                    <button id="closeChat" class="close-chat">✕</button>
+                </div>
+            </div>
+
+            <!-- API Key Panel (Hidden by default) -->
+            <div id="chatSettingsPanel" class="chat-settings hidden">
+                <label for="geminiKey">Google Gemini API Key:</label>
+                <input type="password" id="geminiKey" placeholder="Enter API Key">
+                <button id="saveKeyBtn" class="btn-primary small-btn">Save</button>
+                <p class="tiny-text">Key is stored locally in your browser.</p>
+            </div>
+
+            <div class="chatbot-body" id="chatBody">
+                <div class="message bot">
+                    Hello! I'm your Cache Assistant. Ask me about cache hits, misses, or power consumption!
+                </div>
+                <div class="quick-questions">
+                    <button class="chip" onclick="askBot('Why is my hit rate low?')">Why is my hit rate low?</button>
+                    <button class="chip" onclick="askBot('What is a conflict miss?')">What is a conflict miss?</button>
+                    <button class="chip" onclick="askBot('How to reduce power?')">How to reduce power?</button>
+                </div>
+            </div>
+            <div class="chatbot-input">
+                <input type="text" id="chatInput" placeholder="Ask a question...">
+                <button id="sendMessage">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <button class="chat-trigger" id="chatTrigger">
+            <span class="icon">💬</span>
+        </button>
+
+        <!-- Tooltip Container -->
+        <div id="tooltipOverlay" class="tooltip-overlay hidden">
+            <div class="tooltip-content glass-panel">
+                <h3 id="tooltipTitle">Title</h3>
+                <div class="tooltip-formula" id="tooltipFormula">Formula</div>
+                <p id="tooltipDesc">Description</p>
+                <div class="tooltip-factors" id="tooltipFactors"></div>
+            </div>
+        </div>
+
+        <!-- Login Modal -->
+        <div id="loginOverlay" class="login-overlay">
+            <div class="login-card glass-panel">
+                <div class="login-header">
+                    <div class="tum-logo">
+                        <span style="color: #3070b3; font-weight: bold; font-size: 24px;">TUM</span>
+                    </div>
+                    <h2>Student Access</h2>
+                    <p>Please log in with your university email to access the simulator.</p>
+                </div>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="studentEmail">TUM Email Address</label>
+                        <input type="email" id="studentEmail" placeholder="name@tum.de" autocomplete="email">
+                        <p id="loginError" class="error-msg hidden">Please enter a valid @tum.de or @mytum.de email.</p>
+                    </div>
+                    <button id="loginBtn" class="primary-btn full-width">
+                        Access Simulator
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theory Modal -->
+        <div id="theoryOverlay" class="theory-overlay hidden">
+            <div class="theory-card glass-panel">
+                <div class="theory-header">
+                    <h2>Cache Architecture Theory</h2>
+                    <button id="closeTheory" class="icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="theory-content">
+                    <div class="theory-section">
+                        <h3>1. The Memory Hierarchy</h3>
+                        <p>Fast memory is expensive, and cheap memory is slow. Caches bridge this gap by storing
+                            frequently accessed data closer to the CPU.</p>
+                        <div class="diagram-placeholder">
+                            [CPU] &harr; [L1 Cache] &harr; [L2 Cache] &harr; [Main Memory (DRAM)]
+                        </div>
+                    </div>
+                    <div class="theory-section">
+                        <h3>2. Mapping Policies</h3>
+                        <ul>
+                            <li><strong>Direct Mapped:</strong> Each block maps to exactly one cache line. Simple but
+                                prone to conflicts.</li>
+                            <li><strong>Set Associative:</strong> Each block maps to a set of N lines. Reduces conflicts
+                                but increases complexity.</li>
+                            <li><strong>Fully Associative:</strong> A block can go anywhere. No conflict misses, but
+                                expensive to search.</li>
+                        </ul>
+                    </div>
+                    </ul>
+                </div>
+                <div class="theory-section">
+                    <h3>4. Write Policies</h3>
+                    <ul>
+                        <li><strong>Write-Through:</strong> Data is written to both cache and main memory. Safe but
+                            slow.</li>
+                        <li><strong>Write-Back:</strong> Data is written only to cache. Memory is updated only when the
+                            block is replaced (Dirty Bit). Faster.</li>
+                    </ul>
+                </div>
+                <div class="theory-section">
+                    <h3>5. Glossary</h3>
+                    <ul>
+                        <li><strong>Block (Line):</strong> The unit of data transfer between memory and cache.</li>
+                        <li><strong>Tag:</strong> High-order bits used to identify the block.</li>
+                        <li><strong>Index:</strong> Bits used to select the Set.</li>
+                        <li><strong>Offset:</strong> Bits used to select the byte within the block.</li>
+                    </ul>
+                </div>
+                <div class="theory-section">
+                    <h3>6. RISC-V Context</h3>
+                    <p>RISC-V processors often use separate I-Cache and D-Cache (Harvard Architecture). Instructions
+                        like <code>fence.i</code> are used to ensure consistency when modifying code in memory.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
