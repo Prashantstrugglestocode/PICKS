@@ -352,8 +352,6 @@ const app = {
     steps: [], // Store parsed steps with type and value
     timelineData: { labels: [], hitRate: [], energy: [] },
     energySeries: { labels: [], static: [], dynamic: [], penalty: [] },
-    baselineSeeded: false,
-    lastPowerTotals: { static: 0, dynamic: 0, penalty: 0 },
 
     // View Manager (Router)
     router: {
@@ -363,6 +361,9 @@ const app = {
             // Show target view
             const target = document.getElementById(`view-${viewId}`);
             if (target) target.classList.add('active');
+
+            // Ensure view header is visible at top of viewport
+            try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch (e) { window.scrollTo(0,0); }
 
             // Update UI state based on view
             if (viewId === 'l1') {
@@ -427,9 +428,28 @@ const app = {
 
     // New method for theme initialization
     initTheme() {
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // Check if theme preference is saved
+        const savedTheme = localStorage.getItem('theme');
+        
+        if (savedTheme) {
+            // Use saved theme
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                this.updateThemeIcon(true);
+            } else {
+                document.body.removeAttribute('data-theme');
+                this.updateThemeIcon(false);
+            }
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            // Use system preference
             document.body.setAttribute('data-theme', 'dark');
             this.updateThemeIcon(true);
+            localStorage.setItem('theme', 'dark');
+        } else {
+            // Default to light
+            document.body.removeAttribute('data-theme');
+            this.updateThemeIcon(false);
+            localStorage.setItem('theme', 'light');
         }
     },
 
@@ -482,99 +502,21 @@ const app = {
         document.getElementById('addressSequence').value = trace;
     },
 
-    async handleLogin() {
-        const emailInput = document.getElementById('tumEmail');
-        const passwordInput = document.getElementById('tumPassword');
-        const errorMsg = document.getElementById('loginError');
-        const accountRaw = localStorage.getItem('tum_account');
-        const account = accountRaw ? JSON.parse(accountRaw) : null;
 
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
 
-        // TUM Email Regex
-        const tumRegex = /^[a-zA-Z0-9._%+-]+@(tum\.de|mytum\.de)$/;
-
-        if (!tumRegex.test(email)) {
-            errorMsg.classList.remove('hidden');
-            errorMsg.textContent = "Please enter a valid @tum.de or @mytum.de email.";
-            emailInput.style.borderColor = 'var(--danger-color)';
-            return;
-        }
-
-        const hash = await this.hashPassword(password);
-
-        // If no account exists, auto-provision on login
-        if (!account || account.email !== email) {
-            localStorage.setItem('tum_account', JSON.stringify({ email, hash }));
-            localStorage.setItem('tum_user', email);
-            localStorage.setItem('isAuthenticated', 'true');
-            document.getElementById('loginOverlay').classList.add('hidden');
-            this.addChatMessage(`Account created for ${email.split('@')[0]}. You're now logged in.`, 'bot');
-            errorMsg.classList.add('hidden');
-            return;
-        }
-
-        if (hash === account.hash) {
-            localStorage.setItem('tum_user', email);
-            localStorage.setItem('isAuthenticated', 'true');
-            document.getElementById('loginOverlay').classList.add('hidden');
-            this.addChatMessage(`Welcome back, ${email.split('@')[0]}! I'm ready to help you with your cache simulations.`, 'bot');
-            errorMsg.classList.add('hidden');
+    togglePassword() {
+        const pwd = document.getElementById('tumPassword');
+        const btn = document.getElementById('togglePassword');
+        if (!pwd || !btn) return;
+        if (pwd.type === 'password') {
+            pwd.type = 'text';
+            btn.textContent = '🙈';
+            btn.title = 'Hide password';
         } else {
-            errorMsg.classList.remove('hidden');
-            errorMsg.textContent = "Invalid password. Please try again.";
-            passwordInput.style.borderColor = 'var(--danger-color)';
+            pwd.type = 'password';
+            btn.textContent = '👁️';
+            btn.title = 'Show password';
         }
-    },
-
-    async handleRegister() {
-        const emailInput = document.getElementById('tumEmail');
-        const passwordInput = document.getElementById('tumPassword');
-        const confirmInput = document.getElementById('tumPasswordConfirm');
-        const errorMsg = document.getElementById('loginError');
-
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        const confirm = confirmInput.value;
-
-        const tumRegex = /^[a-zA-Z0-9._%+-]+@(tum\.de|mytum\.de)$/;
-        if (!tumRegex.test(email)) {
-            errorMsg.classList.remove('hidden');
-            errorMsg.textContent = "Use your @tum.de or @mytum.de email.";
-            return;
-        }
-        if (password.length < 6) {
-            errorMsg.classList.remove('hidden');
-            errorMsg.textContent = "Password must be at least 6 characters.";
-            return;
-        }
-        if (password !== confirm) {
-            errorMsg.classList.remove('hidden');
-            errorMsg.textContent = "Passwords do not match.";
-            return;
-        }
-
-        const hash = await this.hashPassword(password);
-        localStorage.setItem('tum_account', JSON.stringify({ email, hash }));
-        errorMsg.classList.add('hidden');
-        this.addChatMessage("Account created. Please log in with your new password.", 'bot');
-        this.switchAuthMode('login');
-    },
-
-    handleGuest() {
-        localStorage.setItem('tum_user', 'guest');
-        localStorage.setItem('isAuthenticated', 'true');
-        document.getElementById('loginOverlay').classList.add('hidden');
-        this.addChatMessage("You're exploring as a guest. Login later to persist settings.", 'bot');
-    },
-
-    async hashPassword(message) {
-        const msgBuffer = new TextEncoder().encode(message);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashHex;
     },
 
     handleLogout() {
@@ -589,62 +531,27 @@ const app = {
         const isDark = document.body.getAttribute('data-theme') === 'dark';
         if (isDark) {
             document.body.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
             this.updateThemeIcon(false);
         } else {
             document.body.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
             this.updateThemeIcon(true);
         }
         this.updateChartsTheme();
     },
 
-    switchAuthMode(mode) {
-        const loginTab = document.getElementById('loginTab');
-        const registerTab = document.getElementById('registerTab');
-        const confirmGroup = document.querySelector('.confirm-group');
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const errorMsg = document.getElementById('loginError');
-        const header = document.querySelector('.login-header h2');
-        const subtitle = document.querySelector('.login-header .subtitle');
-        const passwordInput = document.getElementById('tumPassword');
-        const confirmInput = document.getElementById('tumPasswordConfirm');
-        const card = document.querySelector('.login-card');
-        if (errorMsg) errorMsg.classList.add('hidden');
-
-        if (mode === 'register') {
-            if (loginTab) loginTab.classList.remove('active');
-            if (registerTab) registerTab.classList.add('active');
-            if (confirmGroup) confirmGroup.classList.remove('hidden');
-            if (loginBtn) loginBtn.classList.add('hidden');
-            if (registerBtn) registerBtn.classList.remove('hidden');
-            if (header) header.textContent = 'Create your account';
-            if (subtitle) subtitle.textContent = 'Set a password to save your simulator session';
-            if (passwordInput) passwordInput.placeholder = 'Create password';
-            if (confirmInput) confirmInput.placeholder = 'Confirm password';
-            if (card) card.classList.add('mode-register');
-        } else {
-            if (registerTab) registerTab.classList.remove('active');
-            if (loginTab) loginTab.classList.add('active');
-            if (confirmGroup) confirmGroup.classList.add('hidden');
-            if (loginBtn) loginBtn.classList.remove('hidden');
-            if (registerBtn) registerBtn.classList.add('hidden');
-            if (header) header.textContent = 'Welcome to Cache Lab';
-            if (subtitle) subtitle.textContent = 'Use your TUM email to continue';
-            if (passwordInput) passwordInput.placeholder = 'Password';
-            if (confirmInput) confirmInput.placeholder = 'Confirm password';
-            if (card) card.classList.remove('mode-register');
-        }
-    },
-
     updateThemeIcon(isDark) {
         const sun = document.querySelector('.sun-icon');
         const moon = document.querySelector('.moon-icon');
-        if (isDark) {
-            sun.style.display = 'none';
-            moon.style.display = 'block';
-        } else {
-            sun.style.display = 'block';
-            moon.style.display = 'none';
+        if (sun && moon) {
+            if (isDark) {
+                sun.style.display = 'none';
+                moon.style.display = 'block';
+            } else {
+                sun.style.display = 'block';
+                moon.style.display = 'none';
+            }
         }
     },
 
@@ -686,36 +593,35 @@ const app = {
             });
         }
 
-
-
         // 2. AMAT Chart (Mini Line)
         const amatCanvas = document.getElementById('amatChart');
-        const ctxAmat = amatCanvas.getContext('2d');
-        this.charts.amat = new Chart(ctxAmat, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    borderColor: '#9b59b6',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.35,
-                    fill: true,
-                    backgroundColor: 'rgba(155, 89, 182, 0.16)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false }, title: { display: false } },
-                scales: {
-                    y: { display: false, beginAtZero: true },
-                    x: { display: false }
+        if (amatCanvas) {
+            const ctxAmat = amatCanvas.getContext('2d');
+            this.charts.amat = new Chart(ctxAmat, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#9b59b6',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.35,
+                        fill: true,
+                        backgroundColor: 'rgba(155, 89, 182, 0.16)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, title: { display: false } },
+                    scales: {
+                        y: { display: false, beginAtZero: true },
+                        x: { display: false }
+                    }
                 }
-            }
-        });
-
+            });
+        }
 
         // 3. Hit Rate Chart (Mini Pie)
         const pieCanvas = document.getElementById('hitMissPieChart');
@@ -801,27 +707,31 @@ const app = {
         if (timelineCanvas) {
             const ctxTimeline = timelineCanvas.getContext('2d');
             this.charts.timeline = new Chart(ctxTimeline, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: [],
                     datasets: [
                         {
+                            type: 'line',
                             label: 'Hit Rate %',
                             data: [],
                             borderColor: '#00b894',
-                            backgroundColor: 'rgba(0, 184, 148, 0.18)',
+                            backgroundColor: 'rgba(0, 184, 148, 0.15)',
                             fill: true,
                             tension: 0.35,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
+                            pointRadius: 2,
+                            borderWidth: 2
                         },
                         {
                             type: 'bar',
                             label: 'Energy (pJ)',
                             data: [],
-                            backgroundColor: 'rgba(48, 112, 179, 0.35)',
-                            borderRadius: 6,
+                            backgroundColor: 'rgba(48, 112, 179, 0.4)',
+                            borderColor: '#3070b3',
+                            borderRadius: 4,
                             yAxisID: 'y1',
-                            barThickness: 12
+                            barThickness: 6
                         }
                     ]
                 },
@@ -829,17 +739,27 @@ const app = {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: textColor } },
+                        legend: { labels: { color: textColor }, display: true },
                         title: { display: false },
                         tooltip: { mode: 'index', intersect: false }
                     },
                     scales: {
-                        y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
+                        y: {
+                            type: 'linear',
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor },
+                            position: 'left',
+                            title: { display: true, text: 'Hit Rate %', color: textColor }
+                        },
                         y1: {
+                            type: 'linear',
                             beginAtZero: true,
                             position: 'right',
                             ticks: { color: textColor },
-                            grid: { drawOnChartArea: false }
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Energy (pJ)', color: textColor }
                         },
                         x: { ticks: { color: textColor }, grid: { color: 'transparent' } }
                     }
@@ -851,157 +771,178 @@ const app = {
         const powerCanvas = document.getElementById('powerStackedChart');
         if (powerCanvas) {
             const ctxPower = powerCanvas.getContext('2d');
+            const gradientStatic = ctxPower.createLinearGradient(0, 0, 0, 200);
+            gradientStatic.addColorStop(0, 'rgba(93, 173, 226, 0.4)');
+            gradientStatic.addColorStop(1, 'rgba(93, 173, 226, 0.05)');
+
+            const gradientDynamic = ctxPower.createLinearGradient(0, 0, 0, 200);
+            gradientDynamic.addColorStop(0, 'rgba(253, 203, 110, 0.4)');
+            gradientDynamic.addColorStop(1, 'rgba(253, 203, 110, 0.05)');
+
+            const gradientPenalty = ctxPower.createLinearGradient(0, 0, 0, 200);
+            gradientPenalty.addColorStop(0, 'rgba(225, 112, 85, 0.4)');
+            gradientPenalty.addColorStop(1, 'rgba(225, 112, 85, 0.05)');
+
             this.charts.powerStacked = new Chart(ctxPower, {
                 type: 'line',
                 data: {
                     labels: [],
                     datasets: [
                         {
-                            label: 'Static',
+                            label: 'Static Power',
                             data: [],
                             borderColor: '#5dade2',
-                            backgroundColor: gradientFill(ctxPower, 'rgba(93, 173, 226, 0.35)'),
-                            tension: 0.35,
+                            backgroundColor: gradientStatic,
+                            tension: 0.3,
                             fill: true,
-                            stack: 'energy'
+                            pointRadius: 2,
+                            borderWidth: 2.5
                         },
                         {
-                            label: 'Dynamic',
+                            label: 'Dynamic Power',
                             data: [],
                             borderColor: '#fdcb6e',
-                            backgroundColor: gradientFill(ctxPower, 'rgba(253, 203, 110, 0.28)'),
-                            tension: 0.35,
+                            backgroundColor: gradientDynamic,
+                            tension: 0.3,
                             fill: true,
-                            stack: 'energy'
+                            pointRadius: 2,
+                            borderWidth: 2.5
                         },
                         {
-                            label: 'Penalty',
+                            label: 'Miss Penalty',
                             data: [],
                             borderColor: '#e17055',
-                            backgroundColor: gradientFill(ctxPower, 'rgba(225, 112, 85, 0.26)'),
-                            tension: 0.35,
+                            backgroundColor: gradientPenalty,
+                            tension: 0.3,
                             fill: true,
-                            stack: 'energy'
+                            pointRadius: 2,
+                            borderWidth: 2.5
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: textColor } }, title: { display: false } },
+                    plugins: {
+                        legend: { labels: { color: textColor }, display: true, position: 'bottom' },
+                        title: { display: false },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
                     scales: {
-                        y: { beginAtZero: true, stacked: true, ticks: { color: textColor }, grid: { color: gridColor } },
-                        x: { ticks: { color: textColor }, grid: { color: 'transparent' } }
+                        y: {
+                            beginAtZero: true,
+                            stacked: false,
+                            ticks: { color: textColor },
+                            grid: { color: gridColor },
+                            title: { display: true, text: 'Power (pJ)', color: textColor }
+                        },
+                        x: { ticks: { color: textColor }, grid: { color: gridColor } }
                     }
                 }
             });
         }
 
-        // Initialize Waveform Canvas (guard if missing)
+        // Initialize Waveform Canvas
         const signalCanvas = document.getElementById('signalCanvas');
-        this.waveformCtx = signalCanvas ? signalCanvas.getContext('2d') : null;
+        if (signalCanvas) {
+            signalCanvas.width = signalCanvas.offsetWidth;
+            signalCanvas.height = 200;
+            this.waveformCtx = signalCanvas.getContext('2d');
+        }
         this.waveformTime = 0;
         this.waveformHistory = [];
     },
 
     drawWaveform() {
-        // Try to re-acquire context if missing
-        if (!this.waveformCtx) {
-            const canvas = document.getElementById('signalCanvas');
-            if (canvas) this.waveformCtx = canvas.getContext('2d');
-        }
         if (!this.waveformCtx) return;
-
         const ctx = this.waveformCtx;
-
-        // Ensure canvas resolution matches display size
         const canvas = ctx.canvas;
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-            if (canvas.width !== rect.width || canvas.height !== rect.height) {
-                canvas.width = rect.width;
-                canvas.height = rect.height;
-            }
-        } else {
-            // Fallback if hidden
-            canvas.width = canvas.width || 600;
-            canvas.height = canvas.height || 200;
+
+        // Set canvas size
+        if (canvas.width !== canvas.offsetWidth) {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 200;
         }
 
         const width = canvas.width;
         const height = canvas.height;
 
-        // Clear with Grid
-        ctx.fillStyle = '#1e272e'; // Darker background
+        // Determine colors based on theme
+        const isDark = document.body.getAttribute('data-theme') === 'dark';
+        const bgColor = isDark ? '#1a1a1a' : '#f8f9fa';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+        const textColor = isDark ? '#b2bec3' : '#636e72';
+
+        // Clear canvas
+        ctx.fillStyle = bgColor;
         ctx.fillRect(0, 0, width, height);
 
         // Draw Grid Lines
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.strokeStyle = gridColor;
         ctx.lineWidth = 1;
         const stepX = width / 50;
 
         ctx.beginPath();
-        for (let i = 0; i < 50; i += 5) {
+        for (let i = 0; i <= 50; i += 5) {
             ctx.moveTo(i * stepX, 0);
             ctx.lineTo(i * stepX, height);
         }
         ctx.stroke();
 
         // Update History
-        this.waveformTime++;
-        // Logic: If sim exists and we have a valid hit status, use it. 
-        // If not (e.g. init), show low signal.
-        let hitVal = 0;
-        let missVal = 0;
-
-        if (this.sim && typeof this.sim.lastAccessHit === 'boolean') {
-            hitVal = this.sim.lastAccessHit ? 1 : 0;
-            missVal = this.sim.lastAccessHit ? 0 : 1;
+        if (this.sim) {
+            this.waveformTime++;
+            const currentState = {
+                clk: this.waveformTime % 2,
+                hit: this.sim.lastAccessHit ? 1 : 0,
+                miss: !this.sim.lastAccessHit ? 1 : 0,
+                we: 0
+            };
+            this.waveformHistory.push(currentState);
+            if (this.waveformHistory.length > 50) this.waveformHistory.shift();
         }
-
-        const currentState = {
-            clk: this.waveformTime % 2,
-            hit: hitVal,
-            miss: missVal,
-            we: 0
-        };
-        this.waveformHistory.push(currentState);
-        if (this.waveformHistory.length > 50) this.waveformHistory.shift();
 
         // Draw Signals with Labels
         const spacing = height / 4;
-        this.drawSignal(ctx, 'CLK', d => d.clk, spacing * 1, '#00cec9');
-        this.drawSignal(ctx, 'HIT', d => d.hit, spacing * 2, '#00b894');
-        this.drawSignal(ctx, 'MISS', d => d.miss, spacing * 3, '#d63031');
+        this.drawSignal(ctx, 'CLK', d => d.clk, spacing * 0.8, '#00cec9', width, textColor);
+        this.drawSignal(ctx, 'HIT', d => d.hit, spacing * 1.8, '#00b894', width, textColor);
+        this.drawSignal(ctx, 'MISS', d => d.miss, spacing * 2.8, '#d63031', width, textColor);
+        this.drawSignal(ctx, 'WE', d => d.we, spacing * 3.8, '#f39c12', width, textColor);
     },
 
-    drawSignal(ctx, label, getValue, yOffset, color) {
+    drawSignal(ctx, label, getValue, yOffset, color, width, textColor) {
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
 
-        const stepX = ctx.canvas.width / 50;
+        const stepX = width / 50;
+        const amplitude = 15;
 
-        this.waveformHistory.forEach((state, i) => {
-            const val = getValue(state);
-            const x = i * stepX;
-            const y = yOffset - (val * 20); // High = up
+        if (this.waveformHistory && this.waveformHistory.length > 0) {
+            this.waveformHistory.forEach((state, i) => {
+                const val = getValue(state);
+                const x = i * stepX;
+                const y = yOffset - (val * amplitude);
 
-            if (i === 0) ctx.moveTo(x, y);
-            else {
-                // Square wave logic
-                const prevVal = getValue(this.waveformHistory[i - 1]);
-                const prevY = yOffset - (prevVal * 20);
-                ctx.lineTo(x, prevY); // Horizontal
-                ctx.lineTo(x, y); // Vertical transition
-            }
-        });
-        ctx.stroke();
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    const prevVal = getValue(this.waveformHistory[i - 1]);
+                    const prevY = yOffset - (prevVal * amplitude);
+                    if (val !== prevVal) {
+                        ctx.lineTo(x, prevY);
+                    }
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.stroke();
+        }
 
-        // Label
-        ctx.fillStyle = '#b2bec3';
-        ctx.font = '12px monospace';
-        ctx.fillText(label, 5, yOffset);
+        // Draw Label
+        ctx.fillStyle = textColor;
+        ctx.font = 'bold 11px monospace';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 8, yOffset);
     },
 
     updateCharts(res) {
@@ -1039,7 +980,7 @@ const app = {
             this.charts.accessBar.update();
         }
 
-        if (this.charts.timeline) {
+        if (this.charts.timeline && res) {
             this.charts.timeline.data.labels = this.timelineData.labels;
             this.charts.timeline.data.datasets[0].data = this.timelineData.hitRate;
             this.charts.timeline.data.datasets[1].data = this.timelineData.energy;
@@ -1091,8 +1032,6 @@ const app = {
         );
         this.timelineData = { labels: [], hitRate: [], energy: [] };
         this.energySeries = { labels: [], static: [], dynamic: [], penalty: [] };
-        this.lastPowerTotals = { static: 0, dynamic: 0, penalty: 0 };
-        this.seedCharts();
         this.parseAddressSequence(); // Parse addresses and operations
         this.stepIndex = 0;
         document.querySelector('#resultsTable tbody').innerHTML = '';
@@ -1625,15 +1564,18 @@ const app = {
 
         // AMAT Calculation
         // Assumptions: Hit Time = 1 cycle, Miss Penalty = 100 cycles
-        const amat = sim.calculateAMAT();
-        document.getElementById('amatValue').textContent = amat.toFixed(1) + ' cycles';
+        const hitTime = 1;
+        const missPenalty = 100;
+        const missRate = sim.stats.accesses > 0 ? (sim.stats.misses / sim.stats.accesses) : 0;
+        const amat = hitTime + (missRate * missPenalty);
+        document.getElementById('amatValue').textContent = amat.toFixed(2) + ' cycles';
 
         // Avg Power (Energy per Access)
         const avgPower = sim.stats.accesses > 0 ? (sim.powerStats.totalEnergy / sim.stats.accesses) : 0;
         const avgPowerEl = document.getElementById('avgPowerValue');
         if (avgPowerEl) avgPowerEl.textContent = avgPower.toFixed(2) + ' pJ/op';
 
-        // Record series for charts BEFORE updating
+        // Record series for charts
         this.recordSeries(hitRate, res ? res.energy : 0);
 
         // Update Charts
@@ -1648,9 +1590,6 @@ const app = {
     },
 
     recordSeries(hitRate, energy) {
-        // Debug Log
-        // console.log('Recording Series:', { step: this.stepIndex, hitRate, energy });
-
         const label = `S${this.stepIndex + 1}`;
         const maxPoints = 40;
         const trim = (arr) => {
@@ -1661,22 +1600,10 @@ const app = {
         this.timelineData.hitRate.push(parseFloat(hitRate.toFixed(2)));
         this.timelineData.energy.push(parseFloat(energy.toFixed(2)));
 
-        const deltaStatic = this.sim.powerStats.staticEnergy - this.lastPowerTotals.static;
-        const deltaDynamic = this.sim.powerStats.dynamicEnergy - this.lastPowerTotals.dynamic;
-        const deltaPenalty = this.sim.powerStats.missPenaltyEnergy - this.lastPowerTotals.penalty;
-
-        // console.log('Deltas:', { deltaStatic, deltaDynamic, deltaPenalty });
-
         this.energySeries.labels.push(label);
-        this.energySeries.static.push(parseFloat(deltaStatic.toFixed(2)));
-        this.energySeries.dynamic.push(parseFloat(deltaDynamic.toFixed(2)));
-        this.energySeries.penalty.push(parseFloat(deltaPenalty.toFixed(2)));
-
-        this.lastPowerTotals = {
-            static: this.sim.powerStats.staticEnergy,
-            dynamic: this.sim.powerStats.dynamicEnergy,
-            penalty: this.sim.powerStats.missPenaltyEnergy
-        };
+        this.energySeries.static.push(this.sim.powerStats.staticEnergy);
+        this.energySeries.dynamic.push(this.sim.powerStats.dynamicEnergy);
+        this.energySeries.penalty.push(this.sim.powerStats.missPenaltyEnergy);
 
         [this.timelineData.labels, this.timelineData.hitRate, this.timelineData.energy,
         this.energySeries.labels, this.energySeries.static, this.energySeries.dynamic, this.energySeries.penalty].forEach(trim);
@@ -1715,10 +1642,6 @@ const app = {
         this.stepIndex = 0;
         this.timelineData = { labels: [], hitRate: [], energy: [] };
         this.energySeries = { labels: [], static: [], dynamic: [], penalty: [] };
-        this.lastPowerTotals = { static: 0, dynamic: 0, penalty: 0 };
-        this.waveformHistory = [];
-        this.waveformTime = 0;
-        this.seedCharts();
         document.querySelector('#resultsTable tbody').innerHTML = '';
         document.getElementById('hitRateValue').textContent = '0%';
         document.getElementById('energyValue').textContent = '0 pJ';
@@ -1778,34 +1701,6 @@ const app = {
             this.charts.tab.data.datasets.forEach(ds => ds.data = []);
             this.charts.tab.update();
         }
-    },
-    seedCharts() {
-        // Provide a visible baseline so new charts are not empty
-        const label = 'S0';
-        this.timelineData = { labels: [label], hitRate: [0], energy: [0] };
-        this.energySeries = { labels: [label], static: [0], dynamic: [0], penalty: [0] };
-        this.lastPowerTotals = { static: 0, dynamic: 0, penalty: 0 };
-        if (this.charts.timeline) {
-            this.charts.timeline.data.labels = this.timelineData.labels;
-            this.charts.timeline.data.datasets[0].data = this.timelineData.hitRate;
-            this.charts.timeline.data.datasets[1].data = this.timelineData.energy;
-            this.charts.timeline.update();
-        }
-        if (this.charts.powerStacked) {
-            this.charts.powerStacked.data.labels = this.energySeries.labels;
-            this.charts.powerStacked.data.datasets[0].data = this.energySeries.static;
-            this.charts.powerStacked.data.datasets[1].data = this.energySeries.dynamic;
-            this.charts.powerStacked.data.datasets[2].data = this.energySeries.penalty;
-            this.charts.powerStacked.update();
-        }
-        if (this.charts.energyBar) {
-            this.charts.energyBar.data.datasets[0].data = [0, 0, 0];
-            this.charts.energyBar.update();
-        }
-        // Clear waveform baseline
-        this.waveformHistory = [];
-        this.waveformTime = 0;
-        this.drawWaveform();
     },
 
     showToast(msg) {
@@ -1962,62 +1857,22 @@ const app = {
         // Theme Toggle
         addListener('themeToggle', 'click', () => this.toggleTheme());
 
-        // Auth
-        addListener('loginBtn', 'click', () => this.handleLogin());
-        addListener('logoutBtn', 'click', () => this.handleLogout());
-        addListener('registerBtn', 'click', () => this.handleRegister());
-        addListener('loginTab', 'click', () => this.switchAuthMode('login'));
-        addListener('registerTab', 'click', () => this.switchAuthMode('register'));
-        addListener('guestBtn', 'click', () => this.handleGuest());
+        // Auth: bind handlers to `app` to ensure correct `this` and robust delivery
+        addListener('loginBtn', 'click', this.handleLogin.bind(this));
+        addListener('logoutBtn', 'click', this.handleLogout.bind(this));
+        addListener('togglePassword', 'click', this.togglePassword.bind(this));
+        // Optional/register/guest UI from prototype
+        addListener('registerBtn', 'click', () => this.handleRegister && this.handleRegister());
+        addListener('loginTab', 'click', () => this.switchAuthMode && this.switchAuthMode('login'));
+        addListener('registerTab', 'click', () => this.switchAuthMode && this.switchAuthMode('register'));
+        addListener('guestBtn', 'click', () => this.handleGuest && this.handleGuest());
 
-        // Theory
-        // Theory (Handled by link to theory.html)
-
-
-        // Simulation Controls
-        addListener('runSimulation', 'click', () => this.runAll());
+        // Playback / Simulation Controls
         addListener('stepSimulation', 'click', () => this.step());
         addListener('playSimulation', 'click', () => this.togglePlay());
+        addListener('runSimulation', 'click', this.runAll.bind(this));
         addListener('resetSimulation', 'click', () => this.reset());
-
-        // Trace Examples
-        addListener('traceExample', 'change', (e) => this.loadTrace(e.target.value));
-
-        // Grid Zoom
-        const zoomInput = document.getElementById('gridZoom');
-        if (zoomInput) {
-            zoomInput.addEventListener('input', (e) => {
-                const scale = e.target.value;
-                const grid = document.getElementById('visualGrid');
-                if (grid) {
-                    grid.style.fontSize = `${0.8 * scale}rem`;
-                    grid.style.gap = `${12 * scale}px`;
-                    document.querySelectorAll('.cache-block').forEach(b => {
-                        b.style.height = `${70 * scale}px`;
-                        b.style.minWidth = `${40 * scale}px`;
-                    });
-                }
-            });
-        }
-
-        // Config Change -> Auto Reset
-        const configInputs = ['cacheSize', 'blockSize', 'associativity', 'replacementPolicy', 'staticPower', 'voltage'];
-        configInputs.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.addEventListener('input', (e) => {
-                    const display = document.getElementById(id + 'Display');
-                    if (display) display.textContent = e.target.value;
-                    if (this.resetTimeout) clearTimeout(this.resetTimeout);
-                    this.resetTimeout = setTimeout(() => {
-                        this.reset();
-                        this.showToast("Configuration changed. Simulation reset.");
-                    }, 300);
-                });
-            }
-        });
-
-        // Tabs
+        // Tabs (move tab button wiring here so handlers are attached on init)
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -2051,6 +1906,185 @@ const app = {
         });
     },
 
+    async handleLogin() {
+        const emailInput = document.getElementById('tumEmail');
+        const passwordInput = document.getElementById('tumPassword');
+        const errorMsg = document.getElementById('loginError');
+        const accountRaw = localStorage.getItem('tum_account');
+        const account = accountRaw ? JSON.parse(accountRaw) : null;
+
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value : '';
+
+        // TUM Email Regex
+        const tumRegex = /^[a-zA-Z0-9._%+-]+@(tum\.de|mytum\.de)$/;
+
+        if (!tumRegex.test(email)) {
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = "Please enter a valid @tum.de or @mytum.de email.";
+            }
+            if (emailInput) emailInput.style.borderColor = 'var(--danger-color)';
+            return;
+        }
+
+        // Temporary local-only policy: only accept the fixed password 'tum_student'.
+        // Be lenient about accidental whitespace around the password.
+        const normalizedPassword = (password || '').trim();
+        if (normalizedPassword !== 'tum_student') {
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = "Only the temporary password 'tum_student' is accepted in this demo. Make sure there are no extra spaces.";
+            }
+            if (passwordInput) passwordInput.style.borderColor = 'var(--danger-color)';
+            return;
+        }
+
+        try {
+            const hash = await this.hashPassword(password || '');
+
+            // If no account exists, auto-provision on login
+            if (!account || account.email !== email) {
+                localStorage.setItem('tum_account', JSON.stringify({ email, hash }));
+                localStorage.setItem('tum_user', email);
+                localStorage.setItem('isAuthenticated', 'true');
+                const overlay = document.getElementById('loginOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                if (this.addChatMessage) this.addChatMessage(`Account created for ${email.split('@')[0]}. You're now logged in.`, 'bot');
+                if (errorMsg) errorMsg.classList.add('hidden');
+                return;
+            }
+
+            // If using the demo override password, log in regardless of stored account hash
+            if (normalizedPassword === 'tum_student') {
+                localStorage.setItem('tum_user', email);
+                localStorage.setItem('isAuthenticated', 'true');
+                const overlay = document.getElementById('loginOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                if (this.addChatMessage) this.addChatMessage(`Welcome, ${email.split('@')[0]}! You are logged in with the demo password.`, 'bot');
+                if (errorMsg) errorMsg.classList.add('hidden');
+                return;
+            }
+
+            if (hash === account.hash) {
+                localStorage.setItem('tum_user', email);
+                localStorage.setItem('isAuthenticated', 'true');
+                const overlay = document.getElementById('loginOverlay');
+                if (overlay) overlay.classList.add('hidden');
+                if (this.addChatMessage) this.addChatMessage(`Welcome back, ${email.split('@')[0]}! I'm ready to help you with your cache simulations.`, 'bot');
+                if (errorMsg) errorMsg.classList.add('hidden');
+            } else {
+                if (errorMsg) {
+                    errorMsg.classList.remove('hidden');
+                    errorMsg.textContent = 'Invalid password. Please try again.';
+                }
+                if (passwordInput) passwordInput.style.borderColor = 'var(--danger-color)';
+            }
+        } catch (e) {
+            console.error('Login hashing error', e);
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = 'An unexpected error occurred.';
+            }
+        }
+    },
+
+    async handleRegister() {
+        const emailInput = document.getElementById('tumEmail');
+        const passwordInput = document.getElementById('tumPassword');
+        const confirmInput = document.getElementById('tumPasswordConfirm');
+        const errorMsg = document.getElementById('loginError');
+
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value : '';
+        const confirm = confirmInput ? confirmInput.value : '';
+
+        const tumRegex = /^[a-zA-Z0-9._%+-]+@(tum\.de|mytum\.de)$/;
+        if (!tumRegex.test(email)) {
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = 'Use your @tum.de or @mytum.de email.';
+            }
+            return;
+        }
+        if (password.length < 6) {
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = 'Password must be at least 6 characters.';
+            }
+            return;
+        }
+        if (password !== confirm) {
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.textContent = 'Passwords do not match.';
+            }
+            return;
+        }
+
+        const hash = await this.hashPassword(password);
+        localStorage.setItem('tum_account', JSON.stringify({ email, hash }));
+        if (errorMsg) errorMsg.classList.add('hidden');
+        if (this.addChatMessage) this.addChatMessage('Account created. Please log in with your new password.', 'bot');
+        this.switchAuthMode && this.switchAuthMode('login');
+    },
+
+    handleGuest() {
+        localStorage.setItem('tum_user', 'guest');
+        localStorage.setItem('isAuthenticated', 'true');
+        const overlay = document.getElementById('loginOverlay');
+        if (overlay) overlay.classList.add('hidden');
+        if (this.addChatMessage) this.addChatMessage("You're exploring as a guest. Login later to persist settings.", 'bot');
+    },
+
+    async hashPassword(message) {
+        const msgBuffer = new TextEncoder().encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+    },
+
+    switchAuthMode(mode) {
+        const loginTab = document.getElementById('loginTab');
+        const registerTab = document.getElementById('registerTab');
+        const confirmGroup = document.querySelector('.confirm-group');
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const errorMsg = document.getElementById('loginError');
+        const header = document.querySelector('.login-header h2');
+        const subtitle = document.querySelector('.login-header .subtitle');
+        const passwordInput = document.getElementById('tumPassword');
+        const confirmInput = document.getElementById('tumPasswordConfirm');
+        const card = document.querySelector('.login-card');
+        if (errorMsg) errorMsg.classList.add('hidden');
+
+        if (mode === 'register') {
+            if (loginTab) loginTab.classList.remove('active');
+            if (registerTab) registerTab.classList.add('active');
+            if (confirmGroup) confirmGroup.classList.remove('hidden');
+            if (loginBtn) loginBtn.classList.add('hidden');
+            if (registerBtn) registerBtn.classList.remove('hidden');
+            if (header) header.textContent = 'Create your account';
+            if (subtitle) subtitle.textContent = 'Set a password to save your simulator session';
+            if (passwordInput) passwordInput.placeholder = 'Create password';
+            if (confirmInput) confirmInput.placeholder = 'Confirm password';
+            if (card) card.classList.add('mode-register');
+        } else {
+            if (registerTab) registerTab.classList.remove('active');
+            if (loginTab) loginTab.classList.add('active');
+            if (confirmGroup) confirmGroup.classList.add('hidden');
+            if (loginBtn) loginBtn.classList.remove('hidden');
+            if (registerBtn) registerBtn.classList.add('hidden');
+            if (header) header.textContent = 'Welcome to Cache Lab';
+            if (subtitle) subtitle.textContent = 'Use your TUM email to continue';
+            if (passwordInput) passwordInput.placeholder = 'Password';
+            if (confirmInput) confirmInput.placeholder = 'Confirm password';
+            if (card) card.classList.remove('mode-register');
+        }
+    },
+
+
     initChatbot() {
         const widget = document.getElementById('chatbotWidget');
         const trigger = document.getElementById('chatTrigger');
@@ -2063,21 +2097,6 @@ const app = {
         const settingsPanel = document.getElementById('chatSettingsPanel');
         const saveKeyBtn = document.getElementById('saveKeyBtn');
         const keyInput = document.getElementById('geminiKey');
-        if (!widget) console.error('Missing: chatbotWidget');
-        if (!trigger) console.error('Missing: chatTrigger');
-        if (!closeBtn) console.error('Missing: closeChat');
-        if (!sendBtn) console.error('Missing: sendMessage');
-        if (!input) console.error('Missing: chatInput');
-        if (!settingsBtn) console.error('Missing: chatSettingsBtn');
-        if (!settingsPanel) console.error('Missing: chatSettingsPanel');
-        if (!saveKeyBtn) console.error('Missing: saveKeyBtn');
-        if (!keyInput) console.error('Missing: geminiKey');
-
-        if (!widget || !trigger || !closeBtn || !sendBtn || !input || !settingsBtn || !settingsPanel || !saveKeyBtn || !keyInput) {
-            console.warn('Chatbot UI missing elements; skipping init.');
-            return;
-        }
-        console.log('Chatbot initialized successfully.');
 
         // Load Key
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -2098,7 +2117,6 @@ const app = {
         });
 
         trigger.addEventListener('click', () => {
-            console.log('Chat trigger clicked!');
             widget.classList.remove('closed');
             trigger.style.transform = 'scale(0)';
         });
@@ -2119,20 +2137,17 @@ const app = {
             const typingId = this.addChatMessage("Thinking...", 'bot', true);
 
             try {
-                console.log('Sending message to bot:', text);
                 const response = await this.getBotResponse(text);
-                console.log('Received response:', response);
-
-                // Remove typing indicator
+                // Remove typing indicator (by replacing or removing)
                 const typingMsg = document.getElementById(typingId);
                 if (typingMsg) typingMsg.remove();
 
                 this.addChatMessage(response, 'bot');
             } catch (e) {
-                console.error('Chatbot Error:', e);
+                console.error(e);
                 const typingMsg = document.getElementById(typingId);
                 if (typingMsg) typingMsg.remove();
-                this.addChatMessage("Sorry, I encountered an error. Please check the console.", 'bot');
+                this.addChatMessage("Sorry, I encountered an error. " + e.message, 'bot');
             }
         };
 
@@ -2162,22 +2177,19 @@ const app = {
 
     async getBotResponse(input) {
         const apiKey = localStorage.getItem('gemini_api_key');
-        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
 
         // If no API key, use fallback regex bot
-        if (!apiKey || offline) {
-            console.log('Using local bot response (No Key/Offline)');
+        if (!apiKey) {
             return this.getLocalBotResponse(input);
         }
 
         // Call Gemini API
         try {
-            console.log('Calling Gemini API...');
             const response = await this.callGeminiAPI(input, apiKey);
             return response;
         } catch (error) {
             console.warn("Gemini API failed, falling back to local bot:", error);
-            return this.getLocalBotResponse(input) + `\n\n(⚠️ Offline/Blocked: ${error.message})`;
+            return this.getLocalBotResponse(input) + `\n\n(⚠️ API Error: ${error.message})`;
         }
     },
 
@@ -2374,6 +2386,9 @@ const app = {
         setTimeout(() => particle.remove(), 3500);
     },
 };
+
+// Expose `app` to global scope so inline handlers in HTML (onclick="app...") can access it.
+window.app = app;
 
 document.addEventListener('DOMContentLoaded', () => {
     app.init();

@@ -1,16 +1,11 @@
 :root {
     /* Light Theme Variables */
-    --bg-gradient: linear-gradient(135deg, #e9f0fb 0%, #d7e2f5 100%);
-    --glass-bg: rgba(255, 255, 255, 0.9);
-    --glass-border: rgba(48, 112, 179, 0.2);
-    --glass-shadow: 0 8px 28px 0 rgba(31, 38, 135, 0.12);
-    --panel-bg: linear-gradient(140deg, rgba(255, 255, 255, 0.95), rgba(245, 249, 255, 0.95));
-    --surface-1: rgba(255, 255, 255, 0.9);
-    --surface-2: rgba(255, 255, 255, 0.8);
-    --surface-strong: rgba(245, 248, 255, 0.95);
-    --border-strong: rgba(48, 112, 179, 0.18);
-    --text-primary: #0f1826;
-    --text-secondary: #4c5565;
+    --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    --text-primary: #2d3436;
+    --text-secondary: #636e72;
     --accent-color: #3070b3;
     /* TUM Blue */
     --accent-hover: #265a8f;
@@ -28,8 +23,8 @@
     --glow-1: #5dade2;
     --glow-2: #00b894;
     --panel-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.6));
-    --mesh-1: rgba(48, 112, 179, 0.08);
-    --mesh-2: rgba(0, 184, 148, 0.06);
+    --mesh-1: rgba(48, 112, 179, 0.12);
+    --mesh-2: rgba(0, 184, 148, 0.08);
     --chip-bg: rgba(255, 255, 255, 0.08);
 
     /* Fluid Typography & Spacing */
@@ -47,22 +42,58 @@
 
 [data-theme="dark"] {
     /* Dark Theme Variables */
-    --bg-gradient: linear-gradient(145deg, #0f141b 0%, #0b1118 100%);
-    --glass-bg: rgba(30, 39, 46, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    --text-primary: #e8ecf2;
-    --text-secondary: #b7c0cf;
-    --accent-color: #8ba6ff;
-    --accent-hover: #7894f5;
-    --card-bg: rgba(18, 23, 32, 0.55);
-    --mesh-1: rgba(162, 155, 254, 0.06);
+    --bg-gradient: linear-gradient(135deg, #0f1418 0%, #090b0d 100%);
+    --glass-bg: rgba(14, 18, 22, 0.66);
+    --panel-gradient: linear-gradient(135deg, rgba(20,28,36,0.66), rgba(10,12,16,0.66));
+    --glass-border: rgba(162, 155, 254, 0.08);
+    --glass-shadow: 0 8px 28px 0 rgba(0, 0, 0, 0.6);
+    --text-primary: #e6eef6;
+    --text-secondary: #aeb6bd;
+    --accent-color: #9a8cff;
+    --accent-hover: #7f74f8;
+    --card-bg: rgba(18, 22, 28, 0.6);
+    --mesh-1: rgba(104, 109, 255, 0.06);
     --mesh-2: rgba(0, 206, 201, 0.06);
-    --panel-bg: linear-gradient(145deg, rgba(24, 28, 35, 0.9), rgba(18, 22, 29, 0.92));
-    --surface-1: rgba(24, 28, 35, 0.9);
-    --surface-2: rgba(28, 32, 40, 0.85);
-    --surface-strong: rgba(18, 22, 29, 0.95);
-    --border-strong: rgba(255, 255, 255, 0.08);
+}
+
+/* Dark-mode specific tweaks for better contrast and reduced grey tints */
+[data-theme="dark"] .glass-panel {
+    background: var(--panel-gradient);
+    border: 1px solid var(--glass-border);
+}
+
+[data-theme="dark"] .card-body,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .config-panel,
+[data-theme="dark"] .viz-container,
+[data-theme="dark"] .dashboard-grid,
+[data-theme="dark"] .logs-container {
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0));
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background: rgba(255,255,255,0.02);
+    border-color: rgba(255,255,255,0.04);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] header {
+    background: linear-gradient(135deg, rgba(26,32,44,0.6), rgba(16,18,22,0.6));
+}
+
+[data-theme="dark"] .icon-btn:hover {
+    background: rgba(154, 140, 255, 0.07);
+}
+
+[data-theme="dark"] .tab-btn.active {
+    background: rgba(154, 140, 255, 0.06);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .tooltip-trigger {
+    background: rgba(255,255,255,0.06);
 }
 
 * {
@@ -88,7 +119,7 @@ body::before {
     background:
         radial-gradient(circle at 20% 20%, var(--mesh-1), transparent 35%),
         radial-gradient(circle at 80% 0%, var(--mesh-2), transparent 30%);
-    opacity: 0.15;
+    opacity: 0.9;
     pointer-events: none;
     z-index: 0;
 }
@@ -108,7 +139,7 @@ body::before {
 /* Glassmorphism Utility */
 .glass-panel {
     position: relative;
-    background: var(--panel-bg);
+    background: var(--panel-gradient);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
@@ -123,7 +154,7 @@ body::before {
     position: absolute;
     inset: 0;
     background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%);
-    opacity: 0.25;
+    opacity: 0.6;
     pointer-events: none;
 }
 
@@ -176,9 +207,8 @@ h1 {
 
 .subtitle {
     font-size: var(--font-base);
-    color: #1f3c65;
+    color: var(--text-secondary);
     margin-top: 4px;
-    font-weight: 600;
 }
 
 .header-controls {
@@ -308,6 +338,10 @@ textarea:focus {
     box-shadow: 0 0 0 3px rgba(48, 112, 179, 0.2);
 }
 
+input[style*="border-color: #d63031"]:focus {
+    box-shadow: 0 0 0 3px rgba(214, 48, 49, 0.2) !important;
+}
+
 textarea {
     font-family: 'JetBrains Mono', monospace;
     min-height: 140px;
@@ -358,6 +392,17 @@ button {
 
 .secondary-btn:hover {
     background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .secondary-btn {
+    background: rgba(162, 155, 254, 0.1);
+    border: 1px solid rgba(162, 155, 254, 0.2);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .secondary-btn:hover {
+    background: rgba(162, 155, 254, 0.2);
+    border-color: rgba(162, 155, 254, 0.35);
 }
 
 /* Results Area */
@@ -434,6 +479,8 @@ button {
     overflow-y: auto;
     max-height: 600px;
     transform-origin: top left;
+    /* Zoom from top-left */
+    /* Intrinsic Grid for items if needed, but here we use rows */
 }
 
 .set-row {
@@ -443,9 +490,9 @@ button {
     align-items: center;
     padding: 8px 10px;
     border-radius: 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     position: relative;
 }
 
@@ -458,19 +505,18 @@ button {
 .set-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: var(--font-sm);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     width: 60px;
     text-align: right;
     flex-shrink: 0;
-    opacity: 0.8;
 }
 
 .cache-block {
     flex: 1;
     height: 70px;
     padding: 6px 8px;
-    background: var(--surface-strong);
-    border: 1px solid var(--border-strong);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(48, 112, 179, 0.12));
+    border: 1px solid var(--glass-border);
     border-radius: 6px;
     display: flex;
     flex-direction: column;
@@ -484,17 +530,18 @@ button {
     position: relative;
     overflow: hidden;
     min-width: 40px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    /* Prevent crushing */
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .cache-block.valid {
-    background: linear-gradient(135deg, rgba(48, 112, 179, 0.14), rgba(0, 184, 148, 0.08));
-    border-color: rgba(48, 112, 179, 0.45);
+    background: linear-gradient(135deg, rgba(48, 112, 179, 0.18), rgba(0, 184, 148, 0.14));
+    border-color: rgba(48, 112, 179, 0.4);
     color: var(--text-primary);
 }
 
 .cache-block.dirty {
-    box-shadow: 0 0 0 1px rgba(214, 48, 49, 0.35), 0 6px 18px rgba(214, 48, 49, 0.14);
+    box-shadow: 0 0 0 1px rgba(214, 48, 49, 0.45), 0 6px 18px rgba(214, 48, 49, 0.25);
 }
 
 .cache-block.hit-anim {
@@ -640,9 +687,9 @@ button {
 }
 
 .tab-btn.active {
-    background: rgba(48, 112, 179, 0.12);
-    color: var(--accent-color);
-    box-shadow: 0 2px 4px rgba(48, 112, 179, 0.15);
+    background: var(--glass-bg);
+    color: var(--text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     font-weight: 600;
 }
 
@@ -679,10 +726,10 @@ td {
 
 th {
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--text-secondary);
     position: sticky;
     top: 0;
-    background: var(--surface-2);
+    background: var(--glass-bg);
     backdrop-filter: blur(12px);
     z-index: 10;
 }
@@ -695,62 +742,50 @@ td {
 /* Chatbot - Fluid Positioning */
 .chat-trigger {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
+    bottom: clamp(20px, 5vh, 40px);
+    right: clamp(20px, 5vw, 40px);
+    width: clamp(50px, 10vw, 70px);
+    height: clamp(50px, 10vw, 70px);
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+    background: var(--accent-color);
+    color: white;
     border: none;
-    box-shadow: 0 4px 15px rgba(48, 112, 179, 0.4);
+    box-shadow: 0 8px 24px rgba(48, 112, 179, 0.4);
     cursor: pointer;
-    z-index: 9998;
-    /* Just below widget */
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    font-size: clamp(20px, 4vw, 32px);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .chat-trigger:hover {
     transform: scale(1.1);
 }
 
-/* Chatbot Widget */
-/* Chatbot Widget */
 .chatbot-widget {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 350px;
-    height: 500px;
-    background: var(--surface-1);
-    border: 1px solid var(--border-strong);
-    border-radius: 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    bottom: clamp(80px, 15vh, 120px);
+    right: clamp(20px, 5vw, 40px);
+    width: clamp(300px, 90vw, 400px);
+    height: clamp(400px, 70vh, 600px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: var(--glass-shadow);
     display: flex;
     flex-direction: column;
-    z-index: 9999;
-    /* High Z-Index */
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    overflow: hidden;
-    /* Explicit defaults */
-    transform: translateY(0) scale(1);
-    opacity: 1;
-    pointer-events: auto;
+    z-index: 100;
+    transform-origin: bottom right;
+    transition: all 0.3s ease;
 }
 
 .chatbot-widget.closed {
-    transform: translateY(120%) scale(0.9);
+    transform: scale(0);
     opacity: 0;
     pointer-events: none;
-}
-
-/* Generic Hidden Class */
-.hidden {
-    display: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
 }
 
 .chatbot-header {
@@ -900,36 +935,25 @@ td {
 .tooltip-content,
 .login-card,
 .theory-card {
-    width: clamp(340px, 95vw, 960px);
-    max-width: 960px;
-    background: var(--panel-bg);
-    border: 1px solid var(--border-strong);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-    border-radius: 18px;
-    padding: 0;
-    position: relative;
-    overflow: hidden;
+    width: clamp(300px, 90vw, 450px);
+    max-width: 90%;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 16px;
+    padding: var(--space-lg);
+    animation: slideInUp 0.4s ease;
 }
 
-.login-card::before {
-    content: "";
-    position: absolute;
-    inset: -40% -40% 60% 60%;
-    background: radial-gradient(circle at 30% 30%, rgba(48, 112, 179, 0.14), transparent 50%);
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.login-card::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 60%);
-    pointer-events: none;
-}
-
-.login-card.mode-register::before {
-    background: radial-gradient(circle at 30% 30%, rgba(0, 184, 148, 0.16), transparent 50%);
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .theory-card {
@@ -946,7 +970,7 @@ td {
 [data-theme="dark"] .tooltip-content,
 [data-theme="dark"] .login-card,
 [data-theme="dark"] .theory-card {
-    background: var(--panel-bg);
+    background: #1e272e;
 }
 
 .tooltip-trigger {
@@ -978,111 +1002,398 @@ td {
     font-size: var(--font-sm);
 }
 
-.login-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
-    align-items: stretch;
-}
-
-.login-hero {
-    background: linear-gradient(145deg, rgba(48, 112, 179, 0.25), rgba(0, 184, 148, 0.22));
-    padding: 32px 28px;
-    color: var(--text-primary);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-}
-
-.login-hero h3 {
-    font-size: 1.6rem;
-    color: #0e1b2b;
-}
-
-.login-hero p {
-    color: #123257;
-}
-
-.login-hero ul {
-    padding-left: 18px;
-    color: var(--text-primary);
-    display: grid;
-    gap: 6px;
-    font-weight: 600;
-}
-
-.pill-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.2);
-    color: #0e1b2b;
-    font-weight: 800;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    width: fit-content;
-}
-
-.login-pane {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    background: var(--surface-1);
-    padding: 28px;
-}
-
 /* Login Styles */
 .login-header {
     text-align: center;
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.login-header h2 {
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
 }
 
 .tum-logo {
     margin-bottom: var(--space-md);
+    width: 60px;
+    height: 60px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .login-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-    border-radius: 12px;
-    padding: calc(var(--space-md) + 6px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.login-header h2 {
-    font-size: 1.4rem;
-    margin-bottom: 6px;
+/* Two-column login card layout adjustments */
+.login-card > .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 0;
 }
 
-.login-header .subtitle {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
+/* Ensure the two columns share the same base height so their bottoms align */
+.login-card > .grid {
+    min-height: 520px;
+}
+
+@media (min-width: 768px) {
+    .login-card > .grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Ensure form is left and hero is right */
+    .login-card .login-pane {
+        order: 1;
+        padding: 40px;
+        background: #ffffff;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-card .login-hero {
+        order: 2;
+        padding: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, rgba(9,132,227,0.95), rgba(39,174,96,0.9));
+        color: #fbfdff;
+    }
+}
+
+/* Dark mode tweaks for hero */
+[data-theme="dark"] .login-card .login-hero {
+    background: linear-gradient(135deg, rgba(12,74,110,0.9), rgba(21,41,80,0.85));
+}
+
+/* Make sure left form keeps white in light and dark adapts */
+[data-theme="dark"] .login-card .login-pane {
+    background: #0f1720; /* dark panel */
+    color: #e6eef6;
+}
+
+/* Card container polish to match design */
+.login-card {
+    max-width: 920px;
+    width: min(92vw, 920px);
+    margin: 24px auto;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 22px 50px rgba(11, 22, 34, 0.45);
+    border: 1px solid rgba(0,0,0,0.06);
+    background: #fff; /* ensure card bg overrides earlier glass rules */
+}
+
+/* Left hero (mint) styling */
+.login-card .login-hero {
+    background: linear-gradient(180deg, #eaf9f8 0%, #dff6f4 100%);
+    padding: 56px 64px;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    position: relative;
+}
+
+/* Make both panels fill the grid height and use border-box sizing so padding doesn't change visual height */
+.login-card .login-hero,
+.login-card .login-pane {
+    box-sizing: border-box;
+    height: 100%;
+}
+
+.login-card .login-hero h3 {
+    font-size: 40px;
+    margin: 8px 0 12px 0;
+    color: #0b2540;
+}
+
+/* Hero badge (TUM Cache Lab) -- visually a badge, not interactive */
+.tum-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    border: 1px solid rgba(11,37,64,0.06);
+    background: #ffffff; /* light mode background */
+    color: #0b2540; /* light mode text */
+    box-shadow: 0 6px 18px rgba(11,37,64,0.06);
+    pointer-events: none; /* make it non-clickable */
+    cursor: default;
+}
+
+/* Remove hover/active visual affordances (badge should be static) */
+.tum-badge:hover, .tum-badge:active { transform: none; box-shadow: 0 6px 18px rgba(11,37,64,0.06); }
+
+/* Dark theme variant: white text on subtle dark background */
+[data-theme="dark"] .tum-badge {
+    background: rgba(255,255,255,0.06);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: none;
+}
+
+.login-card .login-hero p {
+    color: rgba(11,37,64,0.7);
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.login-card .login-hero ul {
+    margin-top: 18px;
+    list-style: none;
+    padding: 0;
+}
+
+.login-card .login-hero li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: #0b2540;
     font-weight: 600;
 }
 
-.login-overlay {
-    background: radial-gradient(circle at 20% 20%, rgba(48, 112, 179, 0.12), transparent 45%), rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(6px);
+.login-card .login-hero li::before {
+    content: '';
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: 0 0 28px;
+    background: rgba(255,255,255,0.9);
+    box-shadow: 0 2px 6px rgba(10,40,60,0.08) inset;
 }
 
-@media (max-width: 900px) {
-    .login-grid {
-        grid-template-columns: 1fr;
-    }
+.login-card .login-hero li:nth-child(1)::before { background: #dff3e9 url('') center/60% no-repeat; }
+.login-card .login-hero li:nth-child(2)::before { background: #e8f1ff url('') center/60% no-repeat; }
+.login-card .login-hero li:nth-child(3)::before { background: #f4eafc url('') center/60% no-repeat; }
 
-    .login-hero {
-        order: 2;
-        border-radius: 0 0 14px 14px;
-    }
+/* Right form panel polish */
+.login-card .login-pane {
+    padding: 42px 48px;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: linear-gradient(180deg, #05232b 0%, #08323d 100%); /* darker panel to support white text */
+    color: #ffffff;
+    border-radius: 24px 0 0 24px;
+}
 
-    .login-pane {
-        padding: 20px;
+/* Improve readability: brighter, higher-contrast text on the right panel */
+.login-card .login-pane,
+.login-card .login-pane .login-form,
+.login-card .login-pane .login-header,
+.login-card .login-pane .login-tabs {
+    color: #ffffff; /* make form/pane text white */
+}
+
+.login-card .login-pane .login-header h2 {
+    color: #ffffff; /* white heading */
+    font-weight: 800;
+}
+
+.login-card .login-pane .subtitle,
+.login-card .login-pane .login-header p,
+.login-card .login-pane .help-text {
+    color: rgba(255,255,255,0.85); /* slightly softer white */
+}
+
+.login-card .login-tabs .tab-btn {
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.04);
+}
+.login-card .login-tabs .tab-btn.active {
+    color: #05232b;
+    background: #ffffff;
+}
+
+.login-card .login-form input {
+    color: #ffffff; /* input text white */
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.login-card .login-form input::placeholder {
+    color: rgba(255,255,255,0.6);
+}
+
+/* Buttons: ensure secondary text is readable on white background */
+.btn-secondary, .secondary-btn, #guestBtn {
+    color: #05232b;
+    background: rgba(255,255,255,0.95);
+}
+
+/* Dark-mode adjustments: keep high contrast on form text */
+/* Dark-mode adjustments kept but overridden by explicit white text above */
+
+/* Constrain the form width so it matches the screenshot */
+.login-card .login-pane .login-form {
+    max-width: 360px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.login-card .login-form input,
+.login-card .login-form button {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Add subtle vertical divider between panels on wide screens */
+@media (min-width: 880px) {
+    .login-card > .grid {
+        grid-template-columns: 55% 45%;
     }
+    .login-card .login-hero {
+        border-right: 1px solid rgba(11,37,64,0.06);
+    }
+}
+
+/* Ensure overlay centers and has breathing room */
+.login-overlay {
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+/* Texture: tiny dots on the left panel like the mockup */
+.login-card .login-hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(11,37,64,0.02) 1px, transparent 1px);
+    background-size: 18px 18px;
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.login-card .login-header img {
+    height: 44px;
+    display: block;
+    margin: 0 auto 10px auto;
+}
+
+.login-card .login-header h2 {
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.login-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.login-tabs .tab-btn {
+    background: #f4f7fb;
+    border: 1px solid rgba(12,74,110,0.06);
+    padding: 10px 18px;
+    border-radius: 12px;
+    color: #6b7a8a;
+}
+
+.login-tabs .tab-btn.active {
+    background: #f8fbff;
+    color: #2d6fb8;
+    box-shadow: 0 8px 20px rgba(45,111,184,0.18);
+}
+
+.login-form input {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #eef4fb;
+    background: #fbfdff;
+    font-size: 15px;
+    color: #0b2540;
+}
+
+.login-form input::placeholder { color: #99a6b2; }
+
+#loginBtn {
+    background: #2d6fb8;
+    color: white;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 18px 30px rgba(45,111,184,0.22);
+    border: none;
+    cursor: pointer;
+}
+
+#registerBtn { display: none; }
+
+#guestBtn {
+    background: white;
+    border: 1px solid #e6edf5;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+
+.login-meta {
+    margin-top: 18px;
+    background: #f0f7ff;
+    border: 1px solid #deeefb;
+    padding: 12px;
+    border-radius: 10px;
+    color: #235a8a;
+}
+
+/* Small responsive adjustments */
+@media (max-width: 768px) {
+    .login-card { margin: 12px; }
+    .login-card .login-hero, .login-card .login-pane { padding: 20px; }
+    .login-card > .grid { grid-template-columns: 1fr; }
+}
+
+.login-form input {
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: var(--font-base);
+    transition: all 0.3s ease;
+}
+
+.login-form input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(48, 112, 179, 0.2);
+}
+
+.login-form .primary-btn {
+    margin-top: 8px;
+    padding: 14px 24px;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.login-form .primary-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(48, 112, 179, 0.3);
 }
 
 .full-width {
@@ -1090,48 +1401,268 @@ td {
 }
 
 .error-msg {
-    color: var(--danger-color);
+    color: #d63031;
     font-size: var(--font-sm);
-    margin-top: 6px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: rgba(214, 48, 49, 0.1);
+    border: 1px solid rgba(214, 48, 49, 0.3);
+    border-radius: 6px;
+    display: block;
+    font-weight: 500;
 }
 
 .error-msg.hidden {
     display: none;
 }
 
+/* Prototype-like Login Modal Enhancements (imported styles) */
 .login-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin: var(--space-md) 0;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 12px;
 }
 
 .login-tabs .tab-btn {
-    border: 1px solid var(--border-strong);
-    background: var(--surface-2);
-    border-radius: 12px;
-    padding: 12px;
-    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
 }
 
 .login-tabs .tab-btn.active {
-    background: rgba(48, 112, 179, 0.15);
-    color: var(--accent-color);
-    border-color: rgba(48, 112, 179, 0.35);
-}
-
-.login-meta {
-    background: rgba(48, 112, 179, 0.08);
-    border: 1px dashed var(--border-strong);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 0.85rem;
+    background: var(--glass-bg);
     color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
 
-.login-meta .muted {
+.login-card.mode-register {
+    /* Keep full card sizing consistent for register mode */
+    width: min(92vw, 920px);
+}
+
+.confirm-group {
+    display: none;
+}
+
+.confirm-group:not(.hidden) {
+    display: block;
+}
+
+/* Register mode: show confirm field and swap visible buttons */
+.login-card.mode-register .confirm-group {
+    display: block !important;
+}
+.login-card.mode-register #registerBtn {
+    display: block !important;
+}
+.login-card.mode-register #loginBtn {
+    display: none !important;
+}
+
+/* Button system: consistent, soft, accessible */
+.btn-primary, #loginBtn, #registerBtn {
+    background: linear-gradient(180deg, #2d6fb8, #265f9b);
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 12px 28px rgba(45,111,184,0.18);
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.btn-primary:hover, #loginBtn:hover, #registerBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px rgba(45,111,184,0.22);
+}
+.btn-primary:active, #loginBtn:active, #registerBtn:active {
+    transform: translateY(0);
+}
+
+/* Secondary buttons */
+.btn-secondary, .secondary-btn, #guestBtn {
+    background: #fff;
+    color: #324a5f;
+    border: 1px solid #e6eef5;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(30,40,50,0.06);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.btn-secondary:hover, .secondary-btn:hover, #guestBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px rgba(30,40,50,0.08);
+}
+
+/* Inputs: softer borders and focus rings */
+.login-form input {
+    border: 1px solid #e7f0f6;
+    background: #fbfdff;
+    padding: 14px 16px;
+    border-radius: 12px;
+    color: #0b2540;
+    transition: box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.login-form input:focus {
+    outline: none;
+    border-color: #7fb0db;
+    box-shadow: 0 8px 20px rgba(45,111,184,0.12);
+}
+
+/* Left panel color tuning: calmer mint + subtle vignette */
+.login-card .login-hero {
+    background: linear-gradient(180deg, #f0fbfa 0%, #e7f7f5 50%, #e9f8fb 100%);
+    border-radius: 0 24px 24px 0;
+}
+.login-card .login-hero h3 {
+    color: #0e2b3a; /* darker but soft */
+}
+.login-card .login-hero h3,
+.login-card .login-hero h3 .text-transparent,
+.login-card .login-hero p,
+.login-card .login-hero ul,
+.login-card .login-hero li {
+    color: #0e2b3a;
+}
+[data-theme="dark"] .login-card .login-hero h3,
+[data-theme="dark"] .login-card .login-hero h3 .text-transparent,
+[data-theme="dark"] .login-card .login-hero p,
+[data-theme="dark"] .login-card .login-hero ul,
+[data-theme="dark"] .login-card .login-hero li {
+    color: #fff;
+}
+
+/* Gradient 'smarter.' word styling -- light mode uses a blue->teal gradient, dark mode falls back to white */
+.login-card .login-hero h3 .text-transparent {
+    /* Provide visually similar gradient in light mode */
+    background-image: linear-gradient(90deg, #2d6fb8 0%, #39c2b8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .login-card .login-hero h3 .text-transparent {
+    /* In dark mode, use a lighter blue->teal gradient for the word so it remains colorful on dark backgrounds */
+    background-image: linear-gradient(90deg, #79c7ff 0%, #66f3d8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+}
+.login-card .login-hero h3 .text-transparent {
+    color: #0e2b3a;
+}
+[data-theme="dark"] .login-card .login-hero h3 .text-transparent {
+    color: #fff;
+}
+.login-card .login-hero p,
+.login-card .login-hero li {
+    color: #265165;
+}
+
+/* Check icons in the left list: produce colored check badges */
+.login-card .login-hero li::before {
+    content: '✓';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 10px rgba(3,20,30,0.06);
+}
+.login-card .login-hero li:nth-child(1)::before { background: #44c28a; }
+.login-card .login-hero li:nth-child(2)::before { background: #6fb3ff; }
+.login-card .login-hero li:nth-child(3)::before { background: #b98cff; }
+
+/* Make tabs visually float and larger */
+.login-tabs { margin-bottom: 22px; }
+.login-tabs .tab-btn { padding: 12px 22px; border-radius: 14px; font-weight: 700; }
+
+/* Slightly larger confirm input for register */
+.confirm-group input { padding: 14px 16px; border-radius: 12px; }
+
+.password-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-password {
+    position: relative;
+    background: transparent;
+    border: none;
     color: var(--text-secondary);
-    margin-top: 4px;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Layout split: input 85%, toggle 15% */
+.password-row input[type="password"],
+.password-row input[type="text"] {
+    flex: 0 0 85%;
+    width: 85%;
+}
+.password-row .toggle-password {
+    flex: 0 0 15%;
+    width: 15%;
+    min-width: 44px; /* ensure accessible touch target on small screens */
+}
+
+@media (max-width: 420px) {
+    .password-row input[type="password"], .password-row input[type="text"] {
+        flex-basis: 78%;
+        width: 78%;
+    }
+    .password-row .toggle-password {
+        flex-basis: 22%;
+        width: 22%;
+    }
+}
+
+.login-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.guest-btn {
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.login-hero {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    justify-content: center;
+}
+
+/* small tweaks for very narrow screens */
+@media (max-width: 420px) {
+    .login-tabs { gap: 6px; }
+    .login-card { padding: 18px; }
+    .toggle-password { right: 8px; }
 }
 
 /* Theory Styles */
@@ -1349,7 +1880,6 @@ td {
     padding: 40px;
 }
 
-/* System Diagram */
 .system-diagram {
     display: flex;
     justify-content: center;
@@ -1360,8 +1890,8 @@ td {
 }
 
 .sys-component {
-    background: var(--surface-strong);
-    border: 1px solid var(--border-strong);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(48, 112, 179, 0.12));
+    border: 1px solid var(--glass-border);
     border-radius: 16px;
     padding: 30px;
     width: 200px;
@@ -1382,7 +1912,7 @@ td {
 
 .sys-component:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(48, 112, 179, 0.18);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
     border-color: var(--accent-color);
 }
 
@@ -1390,15 +1920,15 @@ td {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(48, 112, 179, 0.08), transparent 60%);
-    opacity: 0.7;
+    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.12), transparent 50%);
+    opacity: 0.9;
     pointer-events: none;
 }
 
 .sys-component .icon {
     font-size: 3rem;
     margin-bottom: 15px;
-    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15));
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.25));
 }
 
 .sys-component.clickable {
@@ -1413,9 +1943,9 @@ td {
 .stats-mini {
     font-size: 0.9rem;
     color: var(--text-secondary);
-    background: var(--surface-2);
-    padding: 6px;
-    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 5px;
+    border-radius: 6px;
 }
 
 .hover-hint {
@@ -1437,7 +1967,7 @@ td {
     flex: 0 0 80px;
     /* Longer bus */
     height: 6px;
-    background: var(--border-strong);
+    background: rgba(255, 255, 255, 0.2);
     /* More visible */
     position: relative;
     border-radius: 4px;
@@ -1929,21 +2459,21 @@ td {
 }
 
 .graylog-card {
-    background: var(--surface-1);
-    border-radius: 12px;
+    background: var(--glass-bg);
+    border-radius: 8px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     min-height: 180px;
-    box-shadow: 0 6px 18px rgba(48, 112, 179, 0.12);
-    border: 1px solid var(--border-strong);
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .graylog-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(48, 112, 179, 0.18);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
 }
 
 .card-header {
@@ -1958,7 +2488,7 @@ td {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-secondary);
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .card-body {
@@ -2021,10 +2551,6 @@ td {
     position: relative;
     width: 100%;
     height: 220px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08));
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 8px;
 }
 
 .tall {
@@ -2042,19 +2568,19 @@ td {
     padding: 6px 12px;
     border-radius: 999px;
     font-size: 0.8rem;
-    background: rgba(255, 255, 255, 0.08);
-    color: #ecf0f1;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 0 12px rgba(93, 173, 226, 0.2);
+    background: var(--chip-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 0 12px rgba(93, 173, 226, 0.15);
 }
 
 .pill {
     padding: 4px 10px;
     border-radius: 999px;
     background: var(--chip-bg);
-    color: #ecf0f1;
+    color: var(--text-primary);
     font-size: 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--glass-border);
     text-transform: uppercase;
     letter-spacing: 0.4px;
 }
@@ -2126,27 +2652,27 @@ td {
 
 .full-width {
     width: 100%;
-    min-height: 180px;
-    /* Reduced height */
+    min-height: 220px;
+}
+
+#signalCanvas {
+    width: 100% !important;
+    height: 200px !important;
+    max-height: 200px !important;
+    display: block;
 }
 
 /* Data Particle Enhancement */
 .data-particle {
-    position: fixed;
+    position: fixed !important;
     width: 16px;
-    /* Bigger */
     height: 16px;
     background: #00cec9;
     border-radius: 50%;
     z-index: 10000;
-    /* Topmost */
     box-shadow: 0 0 15px #00cec9, 0 0 30px rgba(0, 206, 201, 0.6);
-    /* Strong Glow */
     pointer-events: none;
     transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    /* Slower (1s) */
-    transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    /* Slower (1s) */
 }
 
 /* =========================================
