@@ -86,6 +86,21 @@ npm run dev
 
 The application will be available at `http://localhost:5173` (or similar).
 
+## 🚀 Deployment
+
+### Database Setup (Neon)
+1.  Create a project on [Neon](https://neon.tech).
+2.  Copy the **Connection String** (Postgres URL).
+3.  Run the SQL commands from `schema.sql` in the Neon SQL Editor to create the tables.
+
+### Vercel Deployment
+1.  Push your code to GitHub.
+2.  Import the project into [Vercel](https://vercel.com).
+3.  Add the following **Environment Variables** in Vercel:
+    *   `DATABASE_URL`: Your Neon connection string.
+    *   `JWT_SECRET`: A random string for securing tokens.
+4.  Deploy! Vercel will automatically detect the `api` folder and deploy serverless functions.
+
 ## 🤖 AI Configuration
 
 To unlock the full potential of the Chatbot:

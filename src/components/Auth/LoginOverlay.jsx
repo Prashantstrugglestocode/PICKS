@@ -1,16 +1,69 @@
 import { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
 
-export function LoginOverlay({ onLogin }) {
+export function LoginOverlay() {
+    const { login, register } = useAuth();
     const [mode, setMode] = useState('login');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleLogin = () => {
-        // Mock login for now
-        if (email && password) {
-            onLogin(email);
+    const handleSubmit = async () => {
+        setError('');
+        setLoading(true);
+
+        if (mode === 'login') {
+            if (!username || !password) {
+                setError('Please fill in all fields');
+                setLoading(false);
+                return;
+            }
+            const result = await login(username, password);
+            if (!result.success) setError(result.error || 'Login failed');
+        } else {
+            // Registration validation
+            if (!username || !email || !password || !confirm) {
+                setError('Please fill in all fields');
+                setLoading(false);
+                return;
+            }
+            if (password !== confirm) {
+                setError('Passwords do not match');
+                setLoading(false);
+                return;
+            }
+            if (password.length < 8) {
+                setError('Password must be at least 8 characters');
+                setLoading(false);
+                return;
+            }
+
+            const result = await register(username, email, password);
+            if (result.success) {
+                setMode('login');
+                setError('Registration successful! Please login.');
+                setLoading(false);
+                return;
+            } else {
+                setError(result.error || 'Registration failed');
+            }
         }
+        setLoading(false);
+    };
+
+    const handleGuest = () => {
+        // Guest login logic if needed, or just bypass
+        // For now, let's treat guest as a special user or just hide overlay
+        // But since AuthContext controls "isAuthenticated", we might need a guest mode there.
+        // For simplicity, let's just log them in as "guest" locally without backend
+        // Or we can just use a dummy guest account.
+        // Let's assume the user wants real auth.
+        // We can add a "guest" login to the backend or handle it client side.
+        // Let's just alert for now that Guest is limited.
+        alert("Guest mode is currently limited. Please register for full features.");
     };
 
     return (
@@ -28,28 +81,46 @@ export function LoginOverlay({ onLogin }) {
                         <div className="login-tabs grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
                             <button
                                 className={`tab-btn py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${mode === 'login' ? 'active text-tum-blue bg-white shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                                onClick={() => setMode('login')}
+                                onClick={() => { setMode('login'); setError(''); }}
                             >
                                 Login
                             </button>
                             <button
                                 className={`tab-btn py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${mode === 'register' ? 'active text-tum-blue bg-white shadow-sm dark:bg-gray-700 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                                onClick={() => setMode('register')}
+                                onClick={() => { setMode('register'); setError(''); }}
                             >
                                 Register
                             </button>
                         </div>
 
                         <div className="login-form space-y-4">
+                            {error && (
+                                <div className="p-3 text-sm text-red-500 bg-red-100 dark:bg-red-900/30 rounded-lg text-center">
+                                    {error}
+                                </div>
+                            )}
                             <div className="input-group">
                                 <input
-                                    type="email"
-                                    placeholder="Email address"
+                                    type="text"
+                                    placeholder="Username"
                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-tum-blue/50 focus:border-tum-blue outline-none transition-all placeholder-gray-400"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
                                 />
                             </div>
+
+                            {mode === 'register' && (
+                                <div className="input-group">
+                                    <input
+                                        type="email"
+                                        placeholder="Email Address"
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-tum-blue/50 focus:border-tum-blue outline-none transition-all placeholder-gray-400"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                    />
+                                </div>
+                            )}
+
                             <div className="input-group password-row">
                                 <input
                                     type="password"
@@ -58,7 +129,6 @@ export function LoginOverlay({ onLogin }) {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                 />
-                                <button className="toggle-password" type="button" aria-label="Toggle password">Show</button>
                             </div>
 
                             {mode === 'register' && (
@@ -73,11 +143,14 @@ export function LoginOverlay({ onLogin }) {
                                 </div>
                             )}
 
-                            {mode === 'login' ? (
-                                <button onClick={handleLogin} className="w-full py-3.5 rounded-xl bg-tum-blue hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0" style={{ backgroundColor: 'var(--accent-color)' }}>Login</button>
-                            ) : (
-                                <button onClick={handleLogin} className="w-full py-3.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold shadow-lg shadow-teal-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0" style={{ backgroundColor: 'var(--success-color)' }}>Create Account</button>
-                            )}
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className={`w-full py-3.5 rounded-xl text-white font-bold shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                style={{ backgroundColor: mode === 'login' ? 'var(--accent-color)' : 'var(--success-color)' }}
+                            >
+                                {loading ? 'Processing...' : (mode === 'login' ? 'Login' : 'Create Account')}
+                            </button>
 
                             <div className="relative flex py-2 items-center">
                                 <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
@@ -85,11 +158,11 @@ export function LoginOverlay({ onLogin }) {
                                 <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
                             </div>
 
-                            <button onClick={() => onLogin('guest')} className="w-full py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">Continue as Guest</button>
+                            <button onClick={handleGuest} className="w-full py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">Continue as Guest</button>
 
                             <div className="login-meta mt-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 text-xs text-center text-blue-800 dark:text-blue-200">
-                                <p className="font-bold mb-1">🔒 Local Storage Only</p>
-                                <p className="opacity-80">Credentials never leave your browser.</p>
+                                <p className="font-bold mb-1">🔒 Secure Authentication</p>
+                                <p className="opacity-80">Powered by Neon & Vercel</p>
                             </div>
                         </div>
                     </div>
@@ -104,8 +177,8 @@ export function LoginOverlay({ onLogin }) {
                             <h3 className="text-3xl md:text-4xl font-display font-bold mb-4 leading-tight">Simulate <span className="text-transparent bg-clip-text bg-gradient-to-r from-tum-blue to-teal-400" style={{ color: 'white', textDecoration: 'underline' }}>smarter.</span></h3>
                             <p className="text-lg text-gray-200 dark:text-gray-300 mb-8 leading-relaxed">Run cache experiments with instant visuals, power insights, and guided help.</p>
                             <ul className="space-y-3 font-medium text-gray-200 dark:text-gray-200">
-                                <li className="flex items-center gap-3"><span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/30 text-green-100 text-sm">✓</span> Secure local auth</li>
-                                <li className="flex items-center gap-3"><span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/30 text-blue-100 text-sm">✓</span> Guest mode available</li>
+                                <li className="flex items-center gap-3"><span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/30 text-green-100 text-sm">✓</span> Secure cloud auth</li>
+                                <li className="flex items-center gap-3"><span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/30 text-blue-100 text-sm">✓</span> History tracking</li>
                                 <li className="flex items-center gap-3"><span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500/30 text-purple-100 text-sm">✓</span> AI Chat assistance</li>
                             </ul>
                         </div>

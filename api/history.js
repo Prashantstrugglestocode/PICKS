@@ -1,0 +1,53 @@
+import jwt from 'jsonwebtoken';
+import query from './db.js';
+
+// Helper to verify token
+const verifyToken = (req) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return null;
+
+    const token = authHeader.split(' ')[1];
+    try {
+        return jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod');
+    } catch (err) {
+        return null;
+    }
+};
+
+export default async function handler(req, res) {
+    const user = verifyToken(req);
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.method === 'GET') {
+        try {
+            const result = await query(
+                'SELECT * FROM history WHERE user_id = $1 ORDER BY timestamp DESC LIMIT 50',
+                [user.userId]
+            );
+            res.status(200).json(result.rows);
+        } catch (error) {
+            console.error('Fetch history error:', error);
+            res.status(500).json({ error: 'Failed to fetch history' });
+        }
+    } else if (req.method === 'POST') {
+        const { action, details } = req.body;
+        if (!action) {
+            return res.status(400).json({ error: 'Action is required' });
+        }
+
+        try {
+            const result = await query(
+                'INSERT INTO history (user_id, action, details) VALUES ($1, $2, $3) RETURNING *',
+                [user.userId, action, details || '']
+            );
+            res.status(201).json(result.rows[0]);
+        } catch (error) {
+            console.error('Log history error:', error);
+            res.status(500).json({ error: 'Failed to log history' });
+        }
+    } else {
+        res.status(405).json({ error: 'Method not allowed' });
+    }
+}
