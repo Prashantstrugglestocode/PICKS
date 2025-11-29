@@ -6,6 +6,11 @@ import './index.css'
 import { SimulatorProvider } from './context/SimulatorContext';
 import { TooltipProvider } from './context/TooltipContext';
 
+import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+
+// Register ChartJS components globally
+ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <SimulatorProvider>

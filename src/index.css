@@ -374,7 +374,6 @@ button {
 .primary-btn {
     background: var(--accent-color);
     color: white;
-    flex: 2 1 120px;
     box-shadow: 0 4px 6px rgba(48, 112, 179, 0.2);
 }
 
@@ -388,7 +387,6 @@ button {
     background: transparent;
     border: 1px solid var(--glass-border);
     color: var(--text-primary);
-    flex: 1 1 80px;
 }
 
 .secondary-btn:hover {
@@ -2910,11 +2908,27 @@ td {
 .bus.active-left .arrow {
     animation: flowLeft 1s ease-in-out infinite;
 }
+
 /* Data Flow Node Colors & Icons */
-.flow-node.cpu { border-color: #e17055; color: #e17055; }
-.flow-node.l1 { border-color: #0984e3; color: #0984e3; }
-.flow-node.l2 { border-color: #6c5ce7; color: #6c5ce7; }
-.flow-node.ram { border-color: #00b894; color: #00b894; }
+.flow-node.cpu {
+    border-color: #e17055;
+    color: #e17055;
+}
+
+.flow-node.l1 {
+    border-color: #0984e3;
+    color: #0984e3;
+}
+
+.flow-node.l2 {
+    border-color: #6c5ce7;
+    color: #6c5ce7;
+}
+
+.flow-node.ram {
+    border-color: #00b894;
+    color: #00b894;
+}
 
 .flow-node .node-icon {
     display: flex;
@@ -2923,7 +2937,18 @@ td {
     margin-bottom: 5px;
 }
 
-.flow-node.cpu .node-icon svg { filter: drop-shadow(0 0 8px rgba(225, 112, 85, 0.6)); }
-.flow-node.l1 .node-icon svg { filter: drop-shadow(0 0 8px rgba(9, 132, 227, 0.6)); }
-.flow-node.l2 .node-icon svg { filter: drop-shadow(0 0 8px rgba(108, 92, 231, 0.6)); }
-.flow-node.ram .node-icon svg { filter: drop-shadow(0 0 8px rgba(0, 184, 148, 0.6)); }
+.flow-node.cpu .node-icon svg {
+    filter: drop-shadow(0 0 8px rgba(225, 112, 85, 0.6));
+}
+
+.flow-node.l1 .node-icon svg {
+    filter: drop-shadow(0 0 8px rgba(9, 132, 227, 0.6));
+}
+
+.flow-node.l2 .node-icon svg {
+    filter: drop-shadow(0 0 8px rgba(108, 92, 231, 0.6));
+}
+
+.flow-node.ram .node-icon svg {
+    filter: drop-shadow(0 0 8px rgba(0, 184, 148, 0.6));
+}

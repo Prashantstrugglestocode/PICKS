@@ -257,9 +257,8 @@ export class CacheSimulator {
         const offsetMask = (1 << this.offsetBits) - 1;
         const indexMask = (1 << this.indexBits) - 1;
 
-        const index = (address >> this.offsetBits) & indexMask;
+        const setIndex = (address >> this.offsetBits) & indexMask;
         const tag = address >> (this.offsetBits + this.indexBits);
-        const setIndex = index % this.numSets;
 
         this.stats.accesses++;
         if (type === 'Write') this.stats.writes++;
@@ -398,28 +397,44 @@ export class CacheSimulator {
     }
 
     calculatePower(isHit, accessType) {
-        const voltageFactor = this.voltage * this.voltage;
+        // Energy formulas based on CMOS power equations:
+        // Dynamic Power ∝ C * V² * f (we model per-access energy)
+        // Static Power ∝ V (leakage current is roughly linear with voltage)
 
-        const E_bit_access = 5;
-        const E_tag_compare = 2;
-        const P_leak_per_byte = 0.5;
+        const voltageFactor = this.voltage * this.voltage; // V² for dynamic energy
 
+        // Energy per bit operations (in pJ at nominal 1V)
+        const E_bit_access = 5;      // pJ per bit read/write
+        const E_tag_compare = 2;     // pJ per tag bit comparison
+        const P_leak_per_byte = 0.5; // Static leakage power (pJ per byte per access at 1V)
+
+        // Calculate total tag bits in cache
         const totalTagBits = this.numSets * this.associativity * (32 - Math.log2(this.numSets) - Math.log2(this.blockSize));
         const totalSizeBytes = this.cacheSize + (totalTagBits / 8);
-        const staticLeakage = (totalSizeBytes * P_leak_per_byte) * this.voltage;
-        const configuredStatic = this.powerParams.staticPower * (this.cacheSize / 1024);
-        const staticEnergy = (staticLeakage + configuredStatic) * voltageFactor;
 
+        // Static energy: leakage + configured static power
+        // Static power scales linearly with voltage (not V²)
+        const staticLeakage = (totalSizeBytes * P_leak_per_byte) * this.voltage;
+        const configuredStatic = this.powerParams.staticPower * (this.cacheSize / 1024) * this.voltage;
+        const staticEnergy = staticLeakage + configuredStatic;
+
+        // Dynamic energy: depends on hit/miss
         let dynamicEnergy = 0;
         let penaltyEnergy = 0;
+
         if (isHit) {
+            // Hit: tag comparison + full block read
             dynamicEnergy = (this.tagBits * E_tag_compare) + (this.blockSize * 8 * E_bit_access);
         } else {
-            dynamicEnergy = (this.tagBits * E_tag_compare) + (this.blockSize * 8 * E_bit_access * 0.35);
-            penaltyEnergy = this.powerParams.missPenaltyPower * voltageFactor;
+            // Miss: tag comparison + partial read (search only) + miss penalty
+            dynamicEnergy = (this.tagBits * E_tag_compare * this.associativity) + (this.blockSize * 8 * E_bit_access * 0.2);
+            // Miss penalty includes fetching from next level
+            penaltyEnergy = this.powerParams.missPenaltyPower;
         }
 
+        // Dynamic energy scales with V²
         dynamicEnergy *= voltageFactor;
+        penaltyEnergy *= voltageFactor;
 
         this.lastAccessEnergy = staticEnergy + dynamicEnergy + penaltyEnergy;
 

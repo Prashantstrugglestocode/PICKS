@@ -6,11 +6,16 @@ export function SystemDiagram() {
 
     return (
         <section className="view active">
-            <div className="system-diagram-container">
-                <h2>System Architecture Overview</h2>
-                <p className="subtitle">Click on a component to inspect details</p>
+            <div className="system-diagram-container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <h2 style={{ fontSize: '2.5rem', marginBottom: '16px' }}>System Architecture Overview</h2>
+                    <p className="subtitle" style={{ fontSize: '1.1rem', maxWidth: '700px', margin: '0 auto', lineHeight: '1.6' }}>
+                        Explore the complete memory hierarchy from the CPU Core down to Main Memory.
+                        Click on any component to inspect its internal state, view access logs, and analyze performance metrics.
+                    </p>
+                </div>
 
-                <div className="system-diagram">
+                <div className="system-diagram" style={{ margin: '60px 0' }}>
                     <div className="sys-component cpu-unit" onClick={() => navigate('/cpu')}>
                         <div className="icon">
                             <Cpu size={48} strokeWidth={1.5} />
@@ -68,10 +73,58 @@ export function SystemDiagram() {
                     </div>
                 </div>
 
-                <div className="global-controls">
-                    <button className="btn-primary" onClick={() => navigate('/l1')}>Start Simulation (L1 View)</button>
+                <div className="global-controls" style={{ display: 'flex', justifyContent: 'center', marginTop: '40px', marginBottom: '60px' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={() => navigate('/l1')}
+                        style={{
+                            padding: '16px 40px',
+                            fontSize: '1.2rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            borderRadius: '50px',
+                            boxShadow: '0 10px 30px rgba(59, 130, 246, 0.4)'
+                        }}
+                    >
+                        <Zap size={24} fill="currentColor" /> Start Simulation (L1 View)
+                    </button>
+                </div>
+
+                <div className="info-grid" style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: '24px',
+                    marginTop: '40px'
+                }}>
+                    <InfoCard title="How it Works" icon={<Cpu size={24} color="#3b82f6" />}>
+                        The CPU issues memory requests (Loads/Stores). These requests traverse the hierarchy, checking L1, then L2, and finally RAM.
+                    </InfoCard>
+                    <InfoCard title="Visual Feedback" icon={<Zap size={24} color="#10b981" />}>
+                        Watch the data flow animations to see hits and misses in real-time. Green indicates a hit, while red indicates a miss.
+                    </InfoCard>
+                    <InfoCard title="Performance" icon={<Database size={24} color="#f59e0b" />}>
+                        Monitor Hit Rates and AMAT (Average Memory Access Time) to understand the efficiency of your cache configuration.
+                    </InfoCard>
                 </div>
             </div>
         </section>
+    );
+}
+
+function InfoCard({ title, icon, children }) {
+    return (
+        <div style={{
+            background: 'var(--glass-bg)',
+            padding: '24px',
+            borderRadius: '16px',
+            border: '1px solid var(--glass-border)'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                {icon}
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600' }}>{title}</h3>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>{children}</p>
+        </div>
     );
 }

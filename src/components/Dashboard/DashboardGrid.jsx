@@ -1,8 +1,6 @@
 import { Chart as ChartJS, ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Doughnut, Bar, Line } from 'react-chartjs-2';
 
-ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
-
 import { Info } from 'lucide-react';
 import { useTooltip } from '../../context/TooltipContext';
 
@@ -82,6 +80,27 @@ export function DashboardGrid({ stats, powerStats }) {
         ));
     };
 
+    const showMissTypeInfo = () => {
+        showTooltip("Miss Types (3 C's)", (
+            <div>
+                <p><strong>Compulsory (Cold):</strong> First access to a block.</p>
+                <p><strong>Capacity:</strong> Cache is too small to hold all needed blocks.</p>
+                <p><strong>Conflict:</strong> Multiple blocks map to the same set.</p>
+            </div>
+        ));
+    };
+
+    // Miss Type Data
+    const missTypeData = {
+        labels: ['Compulsory', 'Capacity', 'Conflict'],
+        datasets: [{
+            data: [stats.compulsoryMisses, stats.capacityMisses, stats.conflictMisses],
+            backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'], // Blue, Orange, Red
+            borderWidth: 0,
+            cutout: '70%',
+        }]
+    };
+
     return (
         <div className="dashboard-grid">
             {/* Card 1: Hit Rate */}
@@ -96,6 +115,26 @@ export function DashboardGrid({ stats, powerStats }) {
                     <div className="big-number" id="hitRateValue">{hitRate}%</div>
                     <div className="chart-mini-container">
                         <Doughnut data={hitRateData} options={optionsMini} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Card 2: Miss Types */}
+            <div className="metric-card graylog-card">
+                <div className="card-header">
+                    <span className="card-label">Miss Analysis</span>
+                    <div className="tooltip-trigger" onClick={showMissTypeInfo}>
+                        <Info size={14} />
+                    </div>
+                </div>
+                <div className="card-body">
+                    <div className="stats-row" style={{ marginBottom: '8px' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#3b82f6' }}>Cold: {stats.compulsoryMisses}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#f59e0b' }}>Cap: {stats.capacityMisses}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#ef4444' }}>Conf: {stats.conflictMisses}</div>
+                    </div>
+                    <div className="chart-mini-container">
+                        <Doughnut data={missTypeData} options={optionsMini} />
                     </div>
                 </div>
             </div>

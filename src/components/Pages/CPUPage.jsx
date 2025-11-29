@@ -20,7 +20,7 @@ export function CPUPage() {
     return (
         <section className="view active">
             <div className="view-header">
-                <button className="btn-back" onClick={() => navigate('/')}>← Back to System</button>
+                <button className="btn-back" onClick={() => navigate('/simulator')}>← Back to System</button>
                 <h2>CPU Core & Registers</h2>
             </div>
             <div className="cpu-layout">

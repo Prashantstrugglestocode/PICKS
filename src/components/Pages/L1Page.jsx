@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Doughnut } from 'react-chartjs-2';
+import { Activity } from 'lucide-react';
+
 import { ConfigPanel } from '../Dashboard/ConfigPanel';
 import { DashboardGrid } from '../Dashboard/DashboardGrid';
 import { useSimulatorContext } from '../../context/SimulatorContext';
@@ -31,12 +34,28 @@ export function L1Page({ level = 'L1' }) {
 
     const [activeTab, setActiveTab] = React.useState('grid');
     const [zoom, setZoom] = useState(1);
+    const [selectedLogIndex, setSelectedLogIndex] = useState(-1);
+
+    // Auto-select latest log when logs update, unless user manually selected one
+    // Actually, for "Play" mode, we want to follow the latest log.
+    // But if user clicks a row, we stay there?
+    // Let's make it simple: If playing, always follow latest. If paused, allow selection.
+    // Or just default to latest if index is out of bounds or -1.
+
+    const effectiveLogIndex = selectedLogIndex === -1 || selectedLogIndex >= logs.length ? logs.length - 1 : selectedLogIndex;
+    const selectedLog = logs[effectiveLogIndex];
+
+    // Reset selection on reset
+    React.useEffect(() => {
+        if (logs.length === 0) setSelectedLogIndex(-1);
+        else if (isPlaying) setSelectedLogIndex(-1); // Follow live when playing
+    }, [logs.length, isPlaying]);
 
     return (
         <section className="view active">
             {/* ... header ... */}
             <div className="view-header">
-                <button className="btn-back" onClick={() => navigate('/')}>← Back to System</button>
+                <button className="btn-back" onClick={() => navigate('/simulator')}>← Back to System</button>
                 <h2>{level} Cache Detail</h2>
             </div>
 
@@ -129,18 +148,45 @@ export function L1Page({ level = 'L1' }) {
                             </div>
                         )}
                         {activeTab === 'misses' && (
-                            <div className="chart-wrapper" style={{ height: '300px', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                <div style={{ textAlign: 'center', color: '#a0a0a0' }}>
-                                    <h3>Miss Type Breakdown</h3>
-                                    <p>Compulsory: {currentStats.compulsoryMisses || 0}</p>
-                                    <p>Capacity: {currentStats.capacityMisses || 0}</p>
-                                    <p>Conflict: {currentStats.conflictMisses || 0}</p>
+                            <div className="chart-wrapper" style={{ height: '300px', width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+                                <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Miss Type Breakdown</h3>
+                                <div style={{ width: '220px', height: '220px' }}>
+                                    <Doughnut
+                                        data={{
+                                            labels: ['Compulsory', 'Capacity', 'Conflict'],
+                                            datasets: [{
+                                                data: [
+                                                    currentStats.compulsoryMisses || 0,
+                                                    currentStats.capacityMisses || 0,
+                                                    currentStats.conflictMisses || 0
+                                                ],
+                                                backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444'],
+                                                borderWidth: 0,
+                                                cutout: '70%',
+                                            }]
+                                        }}
+                                        options={{
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            plugins: {
+                                                legend: {
+                                                    position: 'bottom',
+                                                    labels: { color: '#aeb6bd', font: { size: 11 } }
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                <div className="stats-row" style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                                    <div style={{ fontSize: '0.8rem', color: '#3b82f6', fontWeight: '500' }}>Cold: {currentStats.compulsoryMisses || 0}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: '500' }}>Cap: {currentStats.capacityMisses || 0}</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '500' }}>Conf: {currentStats.conflictMisses || 0}</div>
                                 </div>
                             </div>
                         )}
                         {activeTab === 'movement' && (
                             <div id="dataMovement" className="data-movement" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <DataFlowDiagram log={logs[logs.length - 1]} />
+                                <DataFlowDiagram log={selectedLog} />
                             </div>
                         )}
                     </div>
@@ -150,6 +196,7 @@ export function L1Page({ level = 'L1' }) {
                 <div className="logs-container glass-panel">
                     <div className="panel-header">
                         <h2>Access Log</h2>
+                        <span style={{ fontSize: '0.8rem', color: '#a0a0a0', marginLeft: '10px' }}>(Click row to visualize)</span>
                     </div>
                     <div className="table-responsive">
                         <table id="resultsTable">
@@ -164,21 +211,41 @@ export function L1Page({ level = 'L1' }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {logs.map((log, i) => {
-                                    const isALU = log.accessType === 'ALU';
-                                    return (
-                                        <tr key={i}>
-                                            <td>{log.step}</td>
-                                            <td>{isALU ? '---' : `0x${log.address.toString(16).toUpperCase()}`}</td>
-                                            <td className={isALU ? 'text-secondary' : (log.isHit ? 'success-text' : 'danger-text')}>
-                                                {isALU ? 'ALU' : (log.isHit ? 'HIT' : 'MISS')}
-                                            </td>
-                                            <td>{isALU ? '---' : `Set ${log.setIndex}, Way ${log.wayIndex}`}</td>
-                                            <td>{isALU ? '---' : `0x${log.tag.toString(16).toUpperCase()}`}</td>
-                                            <td>{log.energy.toFixed(2)} pJ</td>
-                                        </tr>
-                                    );
-                                })}
+                                {logs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                                                <Activity size={32} style={{ opacity: 0.5 }} />
+                                                <span>No access logs yet. Run the simulation to see activity.</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    logs.map((log, i) => {
+                                        const isALU = log.accessType === 'ALU';
+                                        const isSelected = i === effectiveLogIndex;
+                                        return (
+                                            <tr
+                                                key={i}
+                                                onClick={() => setSelectedLogIndex(i)}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                                                    borderLeft: isSelected ? '4px solid var(--accent-color)' : '4px solid transparent'
+                                                }}
+                                            >
+                                                <td>{log.step}</td>
+                                                <td>{isALU ? '---' : `0x${log.address.toString(16).toUpperCase()}`}</td>
+                                                <td className={isALU ? 'text-secondary' : (log.isHit ? 'success-text' : 'danger-text')}>
+                                                    {isALU ? 'ALU' : (log.isHit ? 'HIT' : 'MISS')}
+                                                </td>
+                                                <td>{isALU ? '---' : `Set ${log.setIndex}, Way ${log.wayIndex}`}</td>
+                                                <td>{isALU ? '---' : `0x${log.tag.toString(16).toUpperCase()}`}</td>
+                                                <td>{log.energy.toFixed(2)} pJ</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>

@@ -20,9 +20,9 @@ export function LoginOverlay({ onLogin }) {
                     {/* Login Form Section (left) */}
                     <div className="login-pane flex flex-col justify-center p-8 md:p-12 bg-white dark:bg-gray-900">
                         <div className="login-header text-center mb-8">
-                            <img src="/tum_logo.png" alt="TUM Logo" className="h-12 mx-auto mb-4 drop-shadow-md" />
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome to Cache Lab</h2>
-                            <p className="subtitle text-sm text-gray-500 dark:text-gray-400 font-medium">Use your TUM email to continue</p>
+                            <img src="/tum_logo.png" alt="Visually. Logo" className="h-12 mx-auto mb-4 drop-shadow-md" />
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome to Visually.</h2>
+                            <p className="subtitle text-sm text-gray-500 dark:text-gray-400 font-medium">Sign in to continue</p>
                         </div>
 
                         <div className="login-tabs grid grid-cols-2 gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
@@ -44,7 +44,7 @@ export function LoginOverlay({ onLogin }) {
                             <div className="input-group">
                                 <input
                                     type="email"
-                                    placeholder="tum.de or mytum.de email"
+                                    placeholder="Email address"
                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-tum-blue/50 focus:border-tum-blue outline-none transition-all placeholder-gray-400"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -99,7 +99,7 @@ export function LoginOverlay({ onLogin }) {
                         <div className="relative z-10">
                             <button type="button" className="tum-badge" aria-hidden="true" style={{ background: 'rgba(255,255,255,0.2)', padding: '5px 10px', borderRadius: '20px', marginBottom: '10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                                 <span>🚀</span>
-                                <span className="tum-badge-text">TUM Cache Lab</span>
+                                <span className="tum-badge-text">Visually.</span>
                             </button>
                             <h3 className="text-3xl md:text-4xl font-display font-bold mb-4 leading-tight">Simulate <span className="text-transparent bg-clip-text bg-gradient-to-r from-tum-blue to-teal-400" style={{ color: 'white', textDecoration: 'underline' }}>smarter.</span></h3>
                             <p className="text-lg text-gray-200 dark:text-gray-300 mb-8 leading-relaxed">Run cache experiments with instant visuals, power insights, and guided help.</p>
