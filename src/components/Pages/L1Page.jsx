@@ -224,6 +224,31 @@ export function L1Page({ level = 'L1' }) {
                                     logs.map((log, i) => {
                                         const isALU = log.accessType === 'ALU';
                                         const isSelected = i === effectiveLogIndex;
+
+                                        // Determine what to show based on level
+                                        let displayResult, displayLocation, displayTag, displayClass;
+
+                                        if (level === 'L1') {
+                                            displayResult = isALU ? 'ALU' : (log.isHit ? 'HIT' : 'MISS');
+                                            displayLocation = isALU ? '---' : `Set ${log.setIndex}, Way ${log.wayIndex}`;
+                                            displayTag = isALU ? '---' : `0x${log.tag.toString(16).toUpperCase()}`;
+                                            displayClass = isALU ? 'text-secondary' : (log.isHit ? 'success-text' : 'danger-text');
+                                        } else {
+                                            // L2 View
+                                            if (isALU || !log.l2Details || !log.l2Details.accessed) {
+                                                displayResult = '---';
+                                                displayLocation = '---';
+                                                displayTag = '---';
+                                                displayClass = 'text-secondary';
+                                            } else {
+                                                const l2 = log.l2Details;
+                                                displayResult = l2.hit ? 'HIT' : 'MISS';
+                                                displayLocation = `Set ${l2.set}, Way ${l2.way}`;
+                                                displayTag = `0x${l2.tag.toString(16).toUpperCase()}`;
+                                                displayClass = l2.hit ? 'success-text' : 'danger-text';
+                                            }
+                                        }
+
                                         return (
                                             <tr
                                                 key={i}
@@ -236,11 +261,11 @@ export function L1Page({ level = 'L1' }) {
                                             >
                                                 <td>{log.step}</td>
                                                 <td>{isALU ? '---' : `0x${log.address.toString(16).toUpperCase()}`}</td>
-                                                <td className={isALU ? 'text-secondary' : (log.isHit ? 'success-text' : 'danger-text')}>
-                                                    {isALU ? 'ALU' : (log.isHit ? 'HIT' : 'MISS')}
+                                                <td className={displayClass}>
+                                                    {displayResult}
                                                 </td>
-                                                <td>{isALU ? '---' : `Set ${log.setIndex}, Way ${log.wayIndex}`}</td>
-                                                <td>{isALU ? '---' : `0x${log.tag.toString(16).toUpperCase()}`}</td>
+                                                <td>{displayLocation}</td>
+                                                <td>{displayTag}</td>
                                                 <td>{log.energy.toFixed(2)} pJ</td>
                                             </tr>
                                         );

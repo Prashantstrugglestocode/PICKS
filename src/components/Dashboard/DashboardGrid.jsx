@@ -184,7 +184,7 @@ export function DashboardGrid({ stats, powerStats }) {
                         <span className="stat-item green" id="hitsValue">{stats.hits} Hits</span>
                         <span className="stat-item red" id="missesValue">{stats.misses} Misses</span>
                     </div>
-                    <div className="sub-text subtle">L2 assists: <span id="l2HitsValue">0</span> / L2 misses: <span id="l2MissesValue">0</span></div>
+
                     <div className="chart-mini-container">
                         <Bar data={accessData} options={optionsMini} />
                     </div>

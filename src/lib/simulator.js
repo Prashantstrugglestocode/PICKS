@@ -361,6 +361,48 @@ export class CacheSimulator {
             }
         }
 
+        // Capture L2 Details if accessed
+        let l2Details = {
+            accessed: !isHit, // L2 is accessed only on L1 miss
+            set: -1,
+            way: -1,
+            tag: -1,
+            hit: false
+        };
+
+        if (!isHit) {
+            const l2OffsetBits = Math.log2(this.l2.blockSize);
+            const l2IndexBits = Math.log2(this.l2.sets.length);
+            const l2IndexMask = (1 << l2IndexBits) - 1;
+            const l2Index = (address >> l2OffsetBits) & l2IndexMask;
+            const l2Tag = address >> (l2OffsetBits + l2IndexBits);
+
+            l2Details.set = l2Index;
+            l2Details.tag = l2Tag;
+            l2Details.hit = l2Hit;
+
+            // We need to find the way index again or capture it from above
+            // Re-calculating for simplicity as variables above were scoped
+            const l2Set = this.l2.sets[l2Index];
+            for (let i = 0; i < l2Set.length; i++) {
+                if (l2Set[i].valid && l2Set[i].tag === l2Tag) {
+                    l2Details.way = i;
+                    break;
+                }
+            }
+            // If it was a miss and we allocated, we need that index too. 
+            // Since we didn't store the allocated index in a variable accessible here, 
+            // let's just find the block with the tag we just inserted.
+            if (l2Details.way === -1) {
+                for (let i = 0; i < l2Set.length; i++) {
+                    if (l2Set[i].valid && l2Set[i].tag === l2Tag) {
+                        l2Details.way = i;
+                        break;
+                    }
+                }
+            }
+        }
+
         this.calculatePower(isHit, type);
 
         this.lastResult = {
@@ -373,6 +415,7 @@ export class CacheSimulator {
             accessType: type,
             data: (type === 'Read' && isHit) ? set[wayIndex].data : value,
             l2Hit: l2Hit,
+            l2Details, // Return full L2 info
             address
         };
         this.lastAccessHit = isHit;

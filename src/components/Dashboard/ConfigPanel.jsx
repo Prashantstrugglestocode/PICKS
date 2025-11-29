@@ -48,6 +48,7 @@ export function ConfigPanel({ onStep, onReset, onConfigure, sim, historyLength, 
         random: `0x4A0\n0x120\n0x9F0\n0x040\n0x880\n0x3C0\n0x100\n0x550`,
         matrix: `0x100\n0x200\n0x300\n0x104\n0x204\n0x304\n0x108\n0x208\n0x308`,
         conflict: `0x000\n0x400\n0x800\n0xC00\n0x000\n0x400\n0x800\n0xC00`,
+        l2demo: `// Config: 1KB Cache, Direct Mapped\n0x000\n0x400\n0x000`,
         variables: `var a = 10\nvar b = 20\nvar c = a + b\nc\n0x100`,
         assembly: `ADDI x1, x0, 5\nADDI x2, x0, 10\nADD x3, x1, x2\nSW x3, 0x100(x0) \nLW x4, 0x100(x0)`
     };
@@ -56,6 +57,26 @@ export function ConfigPanel({ onStep, onReset, onConfigure, sim, historyLength, 
         const selected = e.target.value;
         if (traces[selected]) {
             setAddressSequence(traces[selected]);
+
+            // Auto-configure for L2 Demo to ensure it works as expected
+            if (selected === 'l2demo') {
+                const newSize = 1024;
+                const newAssoc = 1;
+                setCacheSize(newSize);
+                setAssociativity(newAssoc);
+
+                // We need to trigger the update in the simulator immediately
+                // We'll use a timeout to allow state to settle or just call onConfigure directly with new values
+                onConfigure({
+                    cacheSize: newSize,
+                    blockSize: blockSize, // Keep current block size
+                    associativity: newAssoc,
+                    replacementPolicy: policy,
+                    staticPower: staticPower,
+                    voltage: voltage
+                });
+            }
+
             onReset();
         }
     };
@@ -219,6 +240,7 @@ export function ConfigPanel({ onStep, onReset, onConfigure, sim, historyLength, 
                         <option value="looping">Looping Pattern</option>
                         <option value="random">Random Access</option>
                         <option value="matrix">Matrix Multiplication</option>
+                        <option value="l2demo">L2 Hit Demo</option>
                     </select>
                 </div>
                 <div className="input-wrapper">
